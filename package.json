@@ -1,0 +1,11 @@
+{
+  "name": "file-size-analyzer",
+  "version": "1.0.0",
+  "description": "Analyze and optimize file sizes for Cocos Playable Ads",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "keywords": ["cocos", "playable-ads", "file-size", "analyzer"],
+  "license": "MIT"
+}
