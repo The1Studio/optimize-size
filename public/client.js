@@ -118,11 +118,29 @@ function renderChart() {
 
     document.getElementById('typeChart').innerHTML = types.map(([t, s]) => {
         const pct = (s.size / total * 100).toFixed(1);
-        return `<div class="bar-item">
-            <div class="bar-label">${t} (${s.count})</div>
-            <div class="bar-track"><div class="bar-fill type-${t}" style="width:${pct}%">${fmt(s.size)} (${pct}%)</div></div>
+        return `<div class="chart-item">
+            <div class="chart-header">
+                <span class="chart-label">${t}</span>
+                <span class="chart-count">${s.count} files</span>
+            </div>
+            <div class="chart-bar-wrapper">
+                <div class="chart-bar">
+                    <div class="chart-bar-fill type-${t}" style="width: 0%" data-width="${pct}%"></div>
+                </div>
+                <div class="chart-info">
+                    <span class="chart-size">${fmt(s.size)}</span>
+                    <span class="chart-percent">${pct}%</span>
+                </div>
+            </div>
         </div>`;
     }).join('');
+
+    // Animate bars
+    setTimeout(() => {
+        document.querySelectorAll('.chart-bar-fill').forEach(bar => {
+            bar.style.width = bar.getAttribute('data-width');
+        });
+    }, 100);
 }
 
 /**
