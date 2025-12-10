@@ -4,8 +4,17 @@
   "description": "Analyze and optimize file sizes for Cocos Playable Ads",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js",
+    "dev": "nodemon app.js"
   },
-  "keywords": ["cocos", "playable-ads", "file-size", "analyzer"],
-  "license": "MIT"
+  "keywords": [
+    "cocos",
+    "playable-ads",
+    "file-size",
+    "analyzer"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
 }

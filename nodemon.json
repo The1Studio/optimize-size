@@ -1,0 +1,17 @@
+{
+  "watch": [
+    "*.js",
+    "src/**/*.js",
+    "public/**/*"
+  ],
+  "ext": "js,json,html,css",
+  "ignore": [
+    "node_modules/**",
+    ".git/**"
+  ],
+  "delay": 500,
+  "verbose": false,
+  "env": {
+    "NODE_ENV": "development"
+  }
+}

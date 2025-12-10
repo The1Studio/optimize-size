@@ -2,7 +2,15 @@
   "permissions": {
     "allow": [
       "Bash(node app.js:*)",
-      "Bash(start:*)"
+      "Bash(start:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill /F /PID 370536)",
+      "Bash(taskkill //F //PID 370536)",
+      "Bash(npm install:*)",
+      "Bash(taskkill //F //PID 381168)",
+      "Bash(npm run dev:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []
