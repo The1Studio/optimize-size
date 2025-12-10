@@ -264,32 +264,9 @@ function initTheme() {
     };
 }
 
-/**
- * Initialize tab navigation
- */
-function initTabs() {
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    const tabContents = document.querySelectorAll('.tab-content');
-
-    tabButtons.forEach(btn => {
-        btn.onclick = () => {
-            const targetTab = btn.getAttribute('data-tab');
-
-            // Remove active class from all tabs
-            tabButtons.forEach(b => b.classList.remove('active'));
-            tabContents.forEach(c => c.classList.remove('active'));
-
-            // Add active class to clicked tab
-            btn.classList.add('active');
-            document.getElementById(`tab-${targetTab}`).classList.add('active');
-        };
-    });
-}
-
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
-    initTabs();
     initEventListeners();
     load();
 });
