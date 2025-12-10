@@ -6,72 +6,148 @@
     <title>File Size Analyzer</title>
     <link rel="stylesheet" href="/styles.css">
 </head>
-<body>
-    <div class="container">
-        <h1>File Size Analyzer</h1>
-        <p class="subtitle">Build Size Optimization Tool</p>
+<body class="theme-light">
+    <div class="app-header">
+        <div class="header-content">
+            <div class="brand">
+                <h1>File Size Analyzer</h1>
+                <p class="subtitle">Build Size Optimization Tool</p>
+            </div>
+            <div class="header-actions">
+                <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+                    <span class="icon-light">☀️</span>
+                    <span class="icon-dark">🌙</span>
+                </button>
+                <button class="refresh-btn" onclick="location.reload()">🔄 Refresh</button>
+            </div>
+        </div>
         <div class="path-info" id="pathInfo">Loading...</div>
-
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-value" id="totalSize">-</div>
-                <div class="stat-label">Tong dung luong</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="totalFiles">-</div>
-                <div class="stat-label">So file</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="totalFolders">-</div>
-                <div class="stat-label">So folder</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="largestFile">-</div>
-                <div class="stat-label">File lon nhat</div>
-            </div>
-        </div>
-
-        <div class="controls">
-            <input type="text" class="search-box" id="searchBox" placeholder="Tim kiem...">
-            <select id="sortBy">
-                <option value="size-desc">Size (Lon - Nho)</option>
-                <option value="size-asc">Size (Nho - Lon)</option>
-                <option value="name-asc">Ten (A-Z)</option>
-            </select>
-            <select id="filterType">
-                <option value="all">Tat ca</option>
-                <option value="image">Image</option>
-                <option value="script">Script</option>
-                <option value="audio">Audio</option>
-                <option value="model">Model</option>
-                <option value="prefab">Prefab</option>
-            </select>
-            <button class="filter-btn" id="showLarge">> 100KB</button>
-        </div>
-
-        <div class="main-content">
-            <div class="panel">
-                <h2 class="panel-title">Top Files Nang Nhat</h2>
-                <div class="file-list" id="fileList"></div>
-            </div>
-            <div class="panel">
-                <h2 class="panel-title">Phan bo theo loai</h2>
-                <div class="bar-chart" id="typeChart"></div>
-            </div>
-        </div>
-
-        <div class="panel" style="margin-top:20px;">
-            <h2 class="panel-title">Cau truc thu muc</h2>
-            <div class="tree-view" id="treeView"></div>
-        </div>
-
-        <div class="panel rec-panel">
-            <h2 class="panel-title">De xuat toi uu</h2>
-            <div id="recList"></div>
-        </div>
     </div>
 
-    <button class="refresh-btn" onclick="location.reload()">Refresh</button>
+    <div class="container">
+        <nav class="tab-nav">
+            <button class="tab-btn active" data-tab="statistics">
+                <span class="tab-icon">📊</span>
+                <span class="tab-label">Statistics</span>
+            </button>
+            <button class="tab-btn" data-tab="optimize">
+                <span class="tab-icon">⚡</span>
+                <span class="tab-label">Optimize</span>
+            </button>
+        </nav>
+
+        <!-- STATISTICS TAB -->
+        <div class="tab-content active" id="tab-statistics">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">💾</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="totalSize">-</div>
+                        <div class="stat-label">Tong dung luong</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📄</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="totalFiles">-</div>
+                        <div class="stat-label">So file</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📁</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="totalFolders">-</div>
+                        <div class="stat-label">So folder</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🔥</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="largestFile">-</div>
+                        <div class="stat-label">File lon nhat</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <input type="text" class="search-box" id="searchBox" placeholder="🔍 Tim kiem...">
+                <select id="sortBy">
+                    <option value="size-desc">Size (Lon - Nho)</option>
+                    <option value="size-asc">Size (Nho - Lon)</option>
+                    <option value="name-asc">Ten (A-Z)</option>
+                </select>
+                <select id="filterType">
+                    <option value="all">Tat ca</option>
+                    <option value="image">Image</option>
+                    <option value="script">Script</option>
+                    <option value="audio">Audio</option>
+                    <option value="model">Model</option>
+                    <option value="prefab">Prefab</option>
+                </select>
+                <button class="filter-btn" id="showLarge">> 100KB</button>
+            </div>
+
+            <div class="main-content">
+                <div class="panel">
+                    <h2 class="panel-title">Top Files Nang Nhat</h2>
+                    <div class="file-list" id="fileList"></div>
+                </div>
+                <div class="panel">
+                    <h2 class="panel-title">Phan bo theo loai</h2>
+                    <div class="bar-chart" id="typeChart"></div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2 class="panel-title">Cau truc thu muc</h2>
+                <div class="tree-view" id="treeView"></div>
+            </div>
+
+            <div class="panel rec-panel">
+                <h2 class="panel-title">De xuat toi uu</h2>
+                <div id="recList"></div>
+            </div>
+        </div>
+
+        <!-- OPTIMIZE TAB -->
+        <div class="tab-content" id="tab-optimize">
+            <div class="optimize-intro">
+                <div class="intro-icon">⚡</div>
+                <h2>Optimization Tools</h2>
+                <p>Cac cong cu toi uu se duoc tich hop o day</p>
+            </div>
+
+            <div class="optimize-grid">
+                <div class="optimize-card">
+                    <div class="optimize-icon">🖼️</div>
+                    <h3>Image Compression</h3>
+                    <p>Nen anh de giam dung luong</p>
+                    <button class="btn-optimize" disabled>Coming Soon</button>
+                </div>
+
+                <div class="optimize-card">
+                    <div class="optimize-icon">📜</div>
+                    <h3>Script Minification</h3>
+                    <p>Minify JavaScript files</p>
+                    <button class="btn-optimize" disabled>Coming Soon</button>
+                </div>
+
+                <div class="optimize-card">
+                    <div class="optimize-icon">🎵</div>
+                    <h3>Audio Optimization</h3>
+                    <p>Nen audio files</p>
+                    <button class="btn-optimize" disabled>Coming Soon</button>
+                </div>
+
+                <div class="optimize-card">
+                    <div class="optimize-icon">🧹</div>
+                    <h3>Clean Unused Assets</h3>
+                    <p>Xoa cac file khong su dung</p>
+                    <button class="btn-optimize" disabled>Coming Soon</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="/client.js"></script>
 </body>

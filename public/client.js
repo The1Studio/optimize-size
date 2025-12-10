@@ -226,8 +226,52 @@ function initEventListeners() {
     };
 }
 
+/**
+ * Initialize theme toggle
+ */
+function initTheme() {
+    const themeToggle = document.getElementById('themeToggle');
+    const savedTheme = localStorage.getItem('theme') || 'light';
+
+    // Apply saved theme
+    document.body.className = `theme-${savedTheme}`;
+
+    // Toggle theme
+    themeToggle.onclick = () => {
+        const currentTheme = document.body.classList.contains('theme-light') ? 'light' : 'dark';
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+
+        document.body.className = `theme-${newTheme}`;
+        localStorage.setItem('theme', newTheme);
+    };
+}
+
+/**
+ * Initialize tab navigation
+ */
+function initTabs() {
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(btn => {
+        btn.onclick = () => {
+            const targetTab = btn.getAttribute('data-tab');
+
+            // Remove active class from all tabs
+            tabButtons.forEach(b => b.classList.remove('active'));
+            tabContents.forEach(c => c.classList.remove('active'));
+
+            // Add active class to clicked tab
+            btn.classList.add('active');
+            document.getElementById(`tab-${targetTab}`).classList.add('active');
+        };
+    });
+}
+
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
+    initTabs();
     initEventListeners();
     load();
 });
