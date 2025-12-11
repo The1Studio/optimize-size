@@ -327,46 +327,190 @@ async function loadCompressEstimate() {
 }
 
 /**
+ * Show result modal
+ */
+function showResultModal(data) {
+    const modal = document.getElementById('resultModal');
+    const percentValue = document.getElementById('percentValue');
+    const circleProgress = document.getElementById('circleProgress');
+    const resultTitle = document.getElementById('resultTitle');
+    const resultSubtitle = document.getElementById('resultSubtitle');
+    const resultDetails = document.getElementById('resultDetails');
+
+    // Calculate percentage
+    const percent = data.type === 'resize'
+        ? ((data.saved / data.originalSize) * 100).toFixed(1)
+        : ((data.saved / data.originalSize) * 100).toFixed(1);
+
+    // Set percentage text
+    percentValue.textContent = `${percent}%`;
+
+    // Animate circle
+    const circumference = 339.292;
+    const offset = circumference - (percent / 100) * circumference;
+    setTimeout(() => {
+        circleProgress.style.strokeDashoffset = offset;
+    }, 100);
+
+    // Set title based on type
+    if (data.type === 'compress') {
+        resultTitle.textContent = 'Image Compressed Successfully!';
+        resultSubtitle.textContent = `${fmt(data.originalSize)} → ${fmt(data.newSize)}`;
+        resultDetails.innerHTML = `
+            <div class="detail-row">
+                <span class="detail-label">Original Size</span>
+                <span class="detail-value">${fmt(data.originalSize)}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Compressed Size</span>
+                <span class="detail-value">${fmt(data.newSize)}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Space Saved</span>
+                <span class="detail-value highlight">${fmt(data.saved)} (${percent}%)</span>
+            </div>
+        `;
+    } else if (data.type === 'resize') {
+        resultTitle.textContent = 'Image Resized Successfully!';
+        resultSubtitle.textContent = `${data.originalWidth}x${data.originalHeight} → ${data.newWidth}x${data.newHeight}`;
+        resultDetails.innerHTML = `
+            <div class="detail-row">
+                <span class="detail-label">Original</span>
+                <span class="detail-value">${data.originalWidth}x${data.originalHeight} (${fmt(data.originalSize)})</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Resized</span>
+                <span class="detail-value">${data.newWidth}x${data.newHeight} (${fmt(data.newSize)})</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Space Saved</span>
+                <span class="detail-value highlight">${fmt(data.saved)} (${percent}%)</span>
+            </div>
+        `;
+    }
+
+    // Show modal
+    modal.style.display = 'flex';
+}
+
+/**
+ * Close modal
+ */
+window.closeModal = function() {
+    const modal = document.getElementById('resultModal');
+    modal.style.display = 'none';
+
+    // Reset circle
+    const circleProgress = document.getElementById('circleProgress');
+    circleProgress.style.strokeDashoffset = 339.292;
+
+    // Reload data
+    load();
+};
+
+/**
+ * Close resize modal
+ */
+window.closeResizeModal = function() {
+    const modal = document.getElementById('resizeModal');
+    modal.style.display = 'none';
+};
+
+/**
+ * Store current resize file path and metadata
+ */
+let currentResizeFilePath = null;
+let currentImageMetadata = null;
+
+/**
  * Resize a single image
  */
 async function resizeImage(filePath) {
-    const width = prompt('Enter new width (px):\n(Height will be auto-scaled to maintain aspect ratio)', '512');
-    if (!width || isNaN(width)) return;
+    const modal = document.getElementById('resizeModal');
+    const fileNameEl = document.getElementById('resizeFileName');
+    const originalDimensionsEl = document.getElementById('originalDimensions');
+    const widthInput = document.getElementById('resizeWidth');
+    const heightInput = document.getElementById('resizeHeight');
 
-    const maxWidth = parseInt(width);
-    if (maxWidth <= 0) {
-        alert('❌ Invalid width value');
+    // Store file path for later use
+    currentResizeFilePath = filePath;
+
+    // Get image metadata first
+    try {
+        const response = await fetch('/api/image/metadata', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filePath })
+        });
+
+        const metadata = await response.json();
+
+        if (metadata.success) {
+            currentImageMetadata = metadata;
+
+            // Update modal content
+            fileNameEl.textContent = filePath;
+            originalDimensionsEl.textContent = `${metadata.width} x ${metadata.height}`;
+            widthInput.value = metadata.width;
+            heightInput.value = metadata.height;
+
+            // Show modal
+            modal.style.display = 'flex';
+        } else {
+            alert('❌ Failed to get image metadata: ' + metadata.error);
+        }
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
+}
+
+/**
+ * Confirm and execute resize
+ */
+window.confirmResize = async function() {
+    const widthInput = document.getElementById('resizeWidth');
+    const heightInput = document.getElementById('resizeHeight');
+    const width = widthInput.value;
+    const height = heightInput.value;
+
+    if (!width || isNaN(width) || !height || isNaN(height)) {
+        alert('❌ Please enter valid width and height values');
         return;
     }
 
-    if (!confirm(`Resize this image to ${maxWidth}px width?\n\n${filePath}\n\nThis will overwrite the original file.`)) {
+    const newWidth = parseInt(width);
+    const newHeight = parseInt(height);
+
+    if (newWidth <= 0 || newWidth > 4096 || newHeight <= 0 || newHeight > 4096) {
+        alert('❌ Width and height must be between 1 and 4096 pixels');
         return;
     }
+
+    // Close resize modal
+    closeResizeModal();
 
     try {
         const response = await fetch('/api/resize/single', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filePath, maxWidth })
+            body: JSON.stringify({
+                filePath: currentResizeFilePath,
+                width: newWidth,
+                height: newHeight
+            })
         });
 
         const result = await response.json();
 
         if (result.success) {
-            alert(`✅ Image resized successfully!\n\n` +
-                  `Original: ${result.originalWidth}x${result.originalHeight} (${fmt(result.originalSize)})\n` +
-                  `Resized: ${result.newWidth}x${result.newHeight} (${fmt(result.newSize)})\n` +
-                  `Saved: ${fmt(result.saved)} (${((result.saved/result.originalSize)*100).toFixed(1)}%)`);
-
-            // Reload data to show updated size
-            load();
+            showResultModal({ ...result, type: 'resize' });
         } else {
             alert(`❌ Resize failed: ${result.error}`);
         }
     } catch (error) {
         alert(`❌ Error: ${error.message}`);
     }
-}
+};
 
 /**
  * Compress a single image file
@@ -389,13 +533,7 @@ async function compressSingleImage(filePath) {
             if (result.skipped) {
                 alert(`ℹ️ No compression needed\n\n${result.reason}`);
             } else {
-                alert(`✅ Image compressed successfully!\n\n` +
-                      `Original: ${fmt(result.originalSize)}\n` +
-                      `Compressed: ${fmt(result.newSize)}\n` +
-                      `Saved: ${fmt(result.saved)} (${((result.saved/result.originalSize)*100).toFixed(1)}%)`);
-
-                // Reload data to show updated size
-                load();
+                showResultModal({ ...result, type: 'compress' });
             }
         } else {
             alert(`❌ Compression failed: ${result.error}`);

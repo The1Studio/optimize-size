@@ -67,13 +67,48 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // API: Get image metadata
+    if (url === '/api/image/metadata' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', async () => {
+            try {
+                const { filePath } = JSON.parse(body);
+                const fullPath = path.resolve(ROOT_DIR, filePath);
+
+                // Security check: ensure path is within ROOT_DIR
+                if (!fullPath.startsWith(ROOT_DIR)) {
+                    res.writeHead(403, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: false, error: 'Invalid path' }));
+                    return;
+                }
+
+                const sharp = require('sharp');
+                const image = sharp(fullPath);
+                const metadata = await image.metadata();
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    success: true,
+                    width: metadata.width,
+                    height: metadata.height,
+                    format: metadata.format
+                }));
+            } catch (error) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: error.message }));
+            }
+        });
+        return;
+    }
+
     // API: Resize single image
     if (url === '/api/resize/single' && req.method === 'POST') {
         let body = '';
         req.on('data', chunk => { body += chunk; });
         req.on('end', async () => {
             try {
-                const { filePath, maxWidth } = JSON.parse(body);
+                const { filePath, width, height } = JSON.parse(body);
                 const fullPath = path.resolve(ROOT_DIR, filePath);
 
                 // Security check: ensure path is within ROOT_DIR
@@ -93,11 +128,10 @@ const server = http.createServer(async (req, res) => {
                 const image = sharp(fullPath);
                 const metadata = await image.metadata();
 
-                // Resize image
+                // Resize image to exact dimensions
                 const resizedBuffer = await image
-                    .resize(maxWidth, null, {
-                        fit: 'inside',
-                        withoutEnlargement: true
+                    .resize(width, height, {
+                        fit: 'fill'
                     })
                     .toBuffer();
 

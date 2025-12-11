@@ -39,11 +39,21 @@ async function compressImage(filePath, options = {}) {
 
         // Compress based on format
         if (metadata.format === 'png') {
-            image = image.png({ quality, compressionLevel: 9 });
+            image = image.png({ compressionLevel: 9, quality });
         } else if (metadata.format === 'jpeg' || metadata.format === 'jpg') {
             image = image.jpeg({ quality, mozjpeg: true });
         } else if (metadata.format === 'webp') {
             image = image.webp({ quality });
+        } else {
+            // For unsupported formats, just return original
+            return {
+                success: true,
+                originalSize,
+                newSize: originalSize,
+                saved: 0,
+                skipped: true,
+                reason: 'Unsupported format for compression'
+            };
         }
 
         // Save to temp buffer first
