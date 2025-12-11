@@ -20,7 +20,8 @@
       "Bash(npx electron .)",
       "Bash(npx electron:*)",
       "Bash(npm uninstall:*)",
-      "Bash(\".\\node_modules\\electron\\dist\\electron.exe\" .)"
+      "Bash(\".\\node_modules\\electron\\dist\\electron.exe\" .)",
+      "Bash(powershell -ExecutionPolicy Bypass -File \".\\src\\folder-dialog.ps1\" \"C:\\Users\\PC\")"
     ],
     "deny": [],
     "ask": []

@@ -2,8 +2,10 @@
 # This opens the EXACT same dialog as Windows Explorer (with sidebar, navigation, etc.)
 # Returns the selected folder path or empty string if cancelled
 
-# Use the FileOpenDialog COM interface - this is the REAL Windows Explorer dialog!
-Add-Type -TypeDefinition @'
+# Check if type is already loaded (for performance)
+if (-not ([System.Management.Automation.PSTypeName]'FolderSelectDialog').Type) {
+    # Use the FileOpenDialog COM interface - this is the REAL Windows Explorer dialog!
+    Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
 
@@ -109,6 +111,7 @@ public class FolderSelectDialog {
     private static extern int SHCreateShellItem(IntPtr pidlParent, IntPtr psfParent, IntPtr pidl, out IShellItem ppsi);
 }
 '@
+}
 
 # Get initial directory from argument
 $initialDir = ""
