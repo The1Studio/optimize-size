@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Size Analyzer</title>
+    <title>❤️ I Love Cocos - Build Size Analyzer</title>
     <link rel="stylesheet" href="/styles.css">
 </head>
 <body class="theme-light">
     <div class="app-header">
         <div class="header-content">
             <div class="brand">
-                <h1>File Size Analyzer</h1>
+                <h1>❤️ I Love Cocos</h1>
                 <p class="subtitle">Build Size Optimization Tool</p>
             </div>
             <div class="header-actions">
@@ -30,41 +30,41 @@
                 <div class="stat-icon">💾</div>
                 <div class="stat-info">
                     <div class="stat-value" id="totalSize">-</div>
-                    <div class="stat-label">Tong dung luong</div>
+                    <div class="stat-label">Total Size</div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon">📄</div>
                 <div class="stat-info">
                     <div class="stat-value" id="totalFiles">-</div>
-                    <div class="stat-label">So file</div>
+                    <div class="stat-label">Files</div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon">📁</div>
                 <div class="stat-info">
                     <div class="stat-value" id="totalFolders">-</div>
-                    <div class="stat-label">So folder</div>
+                    <div class="stat-label">Folders</div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon">🔥</div>
                 <div class="stat-info">
                     <div class="stat-value" id="largestFile">-</div>
-                    <div class="stat-label">File lon nhat</div>
+                    <div class="stat-label">Largest File</div>
                 </div>
             </div>
         </div>
 
         <div class="controls">
-            <input type="text" class="search-box" id="searchBox" placeholder="🔍 Tim kiem...">
+            <input type="text" class="search-box" id="searchBox" placeholder="🔍 Search...">
             <select id="sortBy">
-                <option value="size-desc">Size (Lon - Nho)</option>
-                <option value="size-asc">Size (Nho - Lon)</option>
-                <option value="name-asc">Ten (A-Z)</option>
+                <option value="size-desc">Size (Large - Small)</option>
+                <option value="size-asc">Size (Small - Large)</option>
+                <option value="name-asc">Name (A-Z)</option>
             </select>
             <select id="filterType">
-                <option value="all">Tat ca</option>
+                <option value="all">All Types</option>
                 <option value="image">Image</option>
                 <option value="script">Script</option>
                 <option value="audio">Audio</option>
@@ -76,22 +76,47 @@
 
         <div class="main-content">
             <div class="panel">
-                <h2 class="panel-title">Top Files Nang Nhat</h2>
+                <h2 class="panel-title">Heaviest Files</h2>
                 <div class="file-list" id="fileList"></div>
             </div>
             <div class="panel">
-                <h2 class="panel-title">Phan bo theo loai</h2>
+                <h2 class="panel-title">Distribution by Type</h2>
                 <div class="bar-chart" id="typeChart"></div>
             </div>
         </div>
 
         <div class="panel">
-            <h2 class="panel-title">Cau truc thu muc</h2>
+            <h2 class="panel-title">Folder Structure</h2>
             <div class="tree-view" id="treeView"></div>
         </div>
 
         <div class="panel rec-panel">
-            <h2 class="panel-title">De xuat toi uu</h2>
+            <h2 class="panel-title">Optimization Tools</h2>
+            <div class="optimize-tools">
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <span class="tool-icon">🖼️</span>
+                        <h3>Image & Texture Compression</h3>
+                    </div>
+                    <p class="tool-desc">Optimize PNG/JPG images, reduce file size without quality loss</p>
+                    <div class="tool-actions">
+                        <button class="btn-tool" id="btnCompressImages">
+                            <span class="btn-icon">⚡</span>
+                            <span>Optimize All Images</span>
+                        </button>
+                        <div class="tool-stats" id="imageStats">
+                            <span class="stat-item">Found: <strong id="totalImages">0</strong> images</span>
+                            <span class="stat-item">Can save: <strong id="potentialSaving">~0 KB</strong></span>
+                        </div>
+                    </div>
+                    <div class="progress-wrapper hidden" id="compressProgress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <span class="progress-text" id="progressText">0%</span>
+                    </div>
+                </div>
+            </div>
             <div id="recList"></div>
         </div>
     </div>

@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 const { scanDirectory } = require('./src/scanner');
+const { compressDirectory, estimateCompression } = require('./src/compressor');
 
 const PORT = 3456;
 const ROOT_DIR = path.resolve(__dirname, '../../assets');
@@ -43,13 +44,63 @@ function serveStatic(filePath, res) {
 }
 
 // Create HTTP Server
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
     const url = req.url;
 
-    // API endpoint
+    // API: Scan directory
     if (url === '/api/scan') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(scanDirectory(ROOT_DIR)));
+        return;
+    }
+
+    // API: Estimate compression
+    if (url === '/api/compress/estimate') {
+        try {
+            const estimate = await estimateCompression(ROOT_DIR);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(estimate));
+        } catch (error) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: error.message }));
+        }
+        return;
+    }
+
+    // API: Compress images
+    if (url === '/api/compress/run' && req.method === 'POST') {
+        try {
+            // Parse body for options
+            let body = '';
+            req.on('data', chunk => { body += chunk; });
+            req.on('end', async () => {
+                const options = body ? JSON.parse(body) : {};
+
+                // Send headers for Server-Sent Events
+                res.writeHead(200, {
+                    'Content-Type': 'text/event-stream',
+                    'Cache-Control': 'no-cache',
+                    'Connection': 'keep-alive'
+                });
+
+                // Progress callback
+                const progressCallback = (progress) => {
+                    res.write(`data: ${JSON.stringify({ type: 'progress', ...progress })}\n\n`);
+                };
+
+                try {
+                    const results = await compressDirectory(ROOT_DIR, options, progressCallback);
+                    res.write(`data: ${JSON.stringify({ type: 'complete', results })}\n\n`);
+                    res.end();
+                } catch (error) {
+                    res.write(`data: ${JSON.stringify({ type: 'error', error: error.message })}\n\n`);
+                    res.end();
+                }
+            });
+        } catch (error) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: error.message }));
+        }
         return;
     }
 

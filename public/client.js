@@ -239,7 +239,7 @@ function initEventListeners() {
     document.getElementById('showLarge').onclick = (e) => {
         showLargeOnly = !showLargeOnly;
         e.target.classList.toggle('active', showLargeOnly);
-        e.target.textContent = showLargeOnly ? 'Tat ca' : '> 100KB';
+        e.target.textContent = showLargeOnly ? 'All' : '> 100KB';
         renderFiles();
     };
 }
@@ -264,9 +264,103 @@ function initTheme() {
     };
 }
 
+/**
+ * Load compression estimate
+ */
+async function loadCompressEstimate() {
+    try {
+        const res = await fetch('/api/compress/estimate');
+        const data = await res.json();
+
+        document.getElementById('totalImages').textContent = data.totalImages;
+        document.getElementById('potentialSaving').textContent = `~${fmt(data.estimatedSaving)}`;
+    } catch (error) {
+        console.error('Failed to load estimate:', error);
+    }
+}
+
+/**
+ * Handle image compression
+ */
+async function compressImages() {
+    const btn = document.getElementById('btnCompressImages');
+    const progressWrapper = document.getElementById('compressProgress');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+
+    // Disable button
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-icon">⏳</span><span>Processing...</span>';
+
+    // Show progress
+    progressWrapper.classList.remove('hidden');
+    progressFill.style.width = '0%';
+    progressText.textContent = '0%';
+
+    try {
+        const response = await fetch('/api/compress/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ quality: 80 })
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const data = JSON.parse(line.slice(6));
+
+                    if (data.type === 'progress') {
+                        // Update progress (estimate based on current file)
+                        const percent = Math.min(95, (data.current / 100) * 100);
+                        progressFill.style.width = `${percent}%`;
+                        progressText.textContent = `${Math.floor(percent)}% - ${data.file}`;
+                    } else if (data.type === 'complete') {
+                        // Show complete
+                        progressFill.style.width = '100%';
+                        progressText.textContent = '100% - Complete!';
+
+                        const { results } = data;
+                        setTimeout(() => {
+                            alert(`✅ Optimized ${results.compressed} images!\n\n` +
+                                  `📊 Total: ${results.total} images\n` +
+                                  `✅ Compressed: ${results.compressed}\n` +
+                                  `⏭️ Skipped: ${results.skipped}\n` +
+                                  `❌ Failed: ${results.failed}\n\n` +
+                                  `💾 Saved: ${fmt(results.savedSize)} (${((results.savedSize/results.originalSize)*100).toFixed(1)}%)`);
+
+                            // Reload page
+                            location.reload();
+                        }, 500);
+                    } else if (data.type === 'error') {
+                        alert('❌ Error: ' + data.error);
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        alert('❌ Error compressing images: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="btn-icon">⚡</span><span>Optimize All Images</span>';
+    }
+}
+
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
     initEventListeners();
     load();
+    loadCompressEstimate();
+
+    // Bind compress button
+    document.getElementById('btnCompressImages').onclick = compressImages;
 });
