@@ -503,7 +503,11 @@ window.confirmResize = async function() {
         const result = await response.json();
 
         if (result.success) {
-            showResultModal({ ...result, type: 'resize' });
+            if (result.skipped) {
+                alert(`ℹ️ No resize needed\n\n${result.reason}`);
+            } else {
+                showResultModal({ ...result, type: 'resize' });
+            }
         } else {
             alert(`❌ Resize failed: ${result.error}`);
         }

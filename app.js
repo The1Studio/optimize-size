@@ -128,13 +128,48 @@ const server = http.createServer(async (req, res) => {
                 const image = sharp(fullPath);
                 const metadata = await image.metadata();
 
-                // Resize image to exact dimensions
-                const resizedBuffer = await image
-                    .resize(width, height, {
-                        fit: 'fill'
-                    })
-                    .toBuffer();
+                // Check if size actually changed
+                if (metadata.width === width && metadata.height === height) {
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        success: true,
+                        skipped: true,
+                        reason: 'Image already has the requested dimensions',
+                        originalSize,
+                        newSize: originalSize,
+                        saved: 0,
+                        originalWidth: metadata.width,
+                        originalHeight: metadata.height,
+                        newWidth: width,
+                        newHeight: height
+                    }));
+                    return;
+                }
 
+                // Resize image to exact dimensions with lossless settings
+                let resizedImage = image.resize(width, height, {
+                    fit: 'fill'
+                });
+
+                // Preserve original format and quality
+                if (metadata.format === 'png') {
+                    resizedImage = resizedImage.png({
+                        compressionLevel: 9,
+                        quality: 100
+                    });
+                } else if (metadata.format === 'jpeg' || metadata.format === 'jpg') {
+                    resizedImage = resizedImage.jpeg({
+                        quality: 95,
+                        mozjpeg: true
+                    });
+                } else if (metadata.format === 'webp') {
+                    resizedImage = resizedImage.webp({
+                        quality: 95,
+                        lossless: false
+                    });
+                }
+
+                const resizedBuffer = await resizedImage.toBuffer();
                 const newMetadata = await sharp(resizedBuffer).metadata();
 
                 // Save resized image
@@ -143,6 +178,7 @@ const server = http.createServer(async (req, res) => {
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
                     success: true,
+                    skipped: false,
                     originalSize,
                     newSize: resizedBuffer.length,
                     saved: originalSize - resizedBuffer.length,
