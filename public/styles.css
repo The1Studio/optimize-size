@@ -380,6 +380,52 @@ select option {
     letter-spacing: -0.3px;
 }
 
+/* COLLAPSIBLE PANEL */
+.collapsible-panel {
+    padding: 0;
+}
+
+.panel-header-collapsible {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 28px;
+    cursor: pointer;
+    transition: var(--transition);
+    border-radius: 16px;
+}
+
+.panel-header-collapsible:hover {
+    background: var(--bg-tertiary);
+}
+
+.panel-header-collapsible .panel-title {
+    margin-bottom: 0;
+}
+
+.collapse-icon {
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    transition: transform 0.3s ease;
+    user-select: none;
+}
+
+.collapse-icon.collapsed {
+    transform: rotate(-90deg);
+}
+
+.collapsible-content {
+    max-height: 2000px;
+    overflow: hidden;
+    transition: max-height 0.4s ease, padding 0.4s ease;
+    padding: 0 28px 28px 28px;
+}
+
+.collapsible-content.collapsed {
+    max-height: 0;
+    padding: 0 28px;
+}
+
 /* FILE LIST */
 .file-list {
     max-height: 480px;

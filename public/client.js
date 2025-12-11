@@ -16,6 +16,23 @@ const icons = {
 };
 
 /**
+ * Toggle collapse state of a panel
+ * @param {string} panelId - ID of the panel to toggle
+ */
+window.toggleCollapse = function(panelId) {
+    const content = document.getElementById(panelId + 'Content');
+    const icon = document.getElementById(panelId + 'Icon');
+
+    if (content.classList.contains('collapsed')) {
+        content.classList.remove('collapsed');
+        icon.classList.remove('collapsed');
+    } else {
+        content.classList.add('collapsed');
+        icon.classList.add('collapsed');
+    }
+};
+
+/**
  * Format bytes to human readable string
  * @param {number} b - bytes
  * @returns {string}
@@ -708,17 +725,69 @@ document.addEventListener('click', (e) => {
 });
 
 /**
- * Change root path for scanning
+ * Change root path for scanning - Using native Windows dialog
  */
-window.changeRootPath = function() {
-    openFolderBrowser('root');
+window.changeRootPath = async function() {
+    try {
+        const currentRoot = document.getElementById('pathInfo').textContent.replace('Scanning: ', '');
+
+        const response = await fetch('/api/native-folder-dialog', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ initialPath: currentRoot })
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.path) {
+            const setRootResponse = await fetch('/api/set-root', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rootPath: result.path })
+            });
+
+            const setRootData = await setRootResponse.json();
+
+            if (setRootData.success) {
+                location.reload();
+            } else {
+                alert(`❌ Error: ${setRootData.error}`);
+            }
+        }
+    } catch (error) {
+        alert(`❌ Error: ${error.message}`);
+    }
 };
 
 /**
- * Browse for optimize path
+ * Browse for optimize path - Using native Windows dialog
  */
-window.browseOptimizePath = function() {
-    openFolderBrowser('optimize');
+window.browseOptimizePath = async function() {
+    try {
+        const currentRoot = document.getElementById('pathInfo').textContent.replace('Scanning: ', '');
+
+        const response = await fetch('/api/native-folder-dialog', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ initialPath: currentRoot })
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.path) {
+            // Calculate relative path from root
+            let relativePath = '';
+            if (result.path.startsWith(currentRoot)) {
+                relativePath = result.path.substring(currentRoot.length).replace(/^[\\/]/, '');
+            } else {
+                relativePath = result.path;
+            }
+
+            document.getElementById('optimizePath').value = relativePath;
+        }
+    } catch (error) {
+        alert(`❌ Error: ${error.message}`);
+    }
 };
 
 // Folder Browser State

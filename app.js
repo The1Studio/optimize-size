@@ -250,6 +250,48 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // API: Native folder dialog (Windows)
+    if (url === '/api/native-folder-dialog' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', async () => {
+            try {
+                const { initialPath } = JSON.parse(body);
+                const { exec } = require('child_process');
+                const scriptPath = path.join(__dirname, 'src', 'folder-dialog.ps1');
+
+                // Build PowerShell command
+                const psCommand = `powershell -ExecutionPolicy Bypass -File "${scriptPath}" "${initialPath || ROOT_DIR}"`;
+
+                exec(psCommand, (error, stdout, stderr) => {
+                    if (error) {
+                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ success: false, error: error.message }));
+                        return;
+                    }
+
+                    const selectedPath = stdout.trim();
+
+                    if (selectedPath) {
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({
+                            success: true,
+                            path: selectedPath
+                        }));
+                    } else {
+                        // User cancelled
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ success: false, cancelled: true }));
+                    }
+                });
+            } catch (error) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: error.message }));
+            }
+        });
+        return;
+    }
+
     // API: List directories
     if (url === '/api/list-directories' && req.method === 'POST') {
         let body = '';
