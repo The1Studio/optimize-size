@@ -394,6 +394,65 @@ function showResultModal(data) {
 }
 
 /**
+ * Show batch compression result modal
+ */
+function showBatchResultModal(data) {
+    const modal = document.getElementById('resultModal');
+    const percentValue = document.getElementById('percentValue');
+    const circleProgress = document.getElementById('circleProgress');
+    const resultTitle = document.getElementById('resultTitle');
+    const resultSubtitle = document.getElementById('resultSubtitle');
+    const resultDetails = document.getElementById('resultDetails');
+
+    // Set percentage text
+    percentValue.textContent = `${data.percent}%`;
+
+    // Animate circle
+    const circumference = 339.292;
+    const offset = circumference - (data.percent / 100) * circumference;
+    setTimeout(() => {
+        circleProgress.style.strokeDashoffset = offset;
+    }, 100);
+
+    // Set title and details
+    resultTitle.textContent = 'Batch Optimization Complete!';
+    resultSubtitle.textContent = `Optimized ${data.compressed} out of ${data.total} images`;
+    resultDetails.innerHTML = `
+        <div class="detail-row">
+            <span class="detail-label">Total Images</span>
+            <span class="detail-value">${data.total}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">✅ Compressed</span>
+            <span class="detail-value highlight">${data.compressed}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">⏭️ Skipped</span>
+            <span class="detail-value">${data.skipped}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">❌ Failed</span>
+            <span class="detail-value">${data.failed}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Original Size</span>
+            <span class="detail-value">${fmt(data.originalSize)}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">New Size</span>
+            <span class="detail-value">${fmt(data.newSize)}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Space Saved</span>
+            <span class="detail-value highlight">${fmt(data.savedSize)} (${data.percent}%)</span>
+        </div>
+    `;
+
+    // Show modal
+    modal.style.display = 'flex';
+}
+
+/**
  * Close modal
  */
 window.closeModal = function() {
@@ -605,15 +664,21 @@ async function compressImages() {
 
                         const { results } = data;
                         setTimeout(() => {
-                            alert(`✅ Optimized ${results.compressed} images!\n\n` +
-                                  `📊 Total: ${results.total} images\n` +
-                                  `✅ Compressed: ${results.compressed}\n` +
-                                  `⏭️ Skipped: ${results.skipped}\n` +
-                                  `❌ Failed: ${results.failed}\n\n` +
-                                  `💾 Saved: ${fmt(results.savedSize)} (${((results.savedSize/results.originalSize)*100).toFixed(1)}%)`);
+                            // Show result modal instead of alert
+                            const percent = results.originalSize > 0
+                                ? ((results.savedSize / results.originalSize) * 100).toFixed(1)
+                                : 0;
 
-                            // Reload page
-                            location.reload();
+                            showBatchResultModal({
+                                total: results.total,
+                                compressed: results.compressed,
+                                skipped: results.skipped,
+                                failed: results.failed,
+                                originalSize: results.originalSize,
+                                newSize: results.newSize,
+                                savedSize: results.savedSize,
+                                percent: percent
+                            });
                         }, 500);
                     } else if (data.type === 'error') {
                         alert('❌ Error: ' + data.error);
