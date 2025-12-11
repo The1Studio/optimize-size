@@ -157,6 +157,27 @@
         </div>
     </div>
 
+    <!-- Folder Browser Modal -->
+    <div class="modal-overlay" id="folderBrowserModal" style="display: none;">
+        <div class="modal-content folder-browser-content">
+            <button class="modal-close" onclick="closeFolderBrowser()">&times;</button>
+            <div class="modal-body">
+                <h3 class="modal-title">📁 Select Directory</h3>
+                <div class="folder-path-bar">
+                    <button class="btn-nav" onclick="navigateUp()" title="Go up">⬆️</button>
+                    <div class="current-path" id="browserCurrentPath">Loading...</div>
+                </div>
+                <div class="folder-list" id="folderList">
+                    <div class="loading">Loading folders...</div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-secondary" onclick="closeFolderBrowser()">Cancel</button>
+                    <button class="btn-primary" onclick="selectCurrentFolder()">Select This Folder</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Result Modal -->
     <div class="modal-overlay" id="resultModal" style="display: none;">
         <div class="modal-content">

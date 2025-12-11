@@ -7,7 +7,6 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
 const { scanDirectory } = require('./src/scanner');
 const { compressDirectory, estimateCompression } = require('./src/compressor');
 
@@ -43,22 +42,9 @@ function serveStatic(filePath, res) {
     });
 }
 
-// Track last modified time for auto-reload
-let lastModifiedTime = Date.now();
-fs.watch(PUBLIC_DIR, { recursive: true }, () => {
-    lastModifiedTime = Date.now();
-});
-
 // Create HTTP Server
 const server = http.createServer(async (req, res) => {
     const url = req.url;
-
-    // API: Check for updates (for auto-reload)
-    if (url === '/api/reload-check') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ lastModified: lastModifiedTime }));
-        return;
-    }
 
     // API: Scan directory
     if (url === '/api/scan') {
@@ -264,6 +250,57 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // API: List directories
+    if (url === '/api/list-directories' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', async () => {
+            try {
+                const { dirPath } = JSON.parse(body);
+                let targetDir = dirPath ? path.resolve(dirPath) : ROOT_DIR;
+
+                // Security check: for relative paths, ensure they're within ROOT_DIR
+                if (dirPath && !path.isAbsolute(dirPath)) {
+                    targetDir = path.resolve(ROOT_DIR, dirPath);
+                    if (!targetDir.startsWith(ROOT_DIR)) {
+                        res.writeHead(403, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ success: false, error: 'Invalid path' }));
+                        return;
+                    }
+                }
+
+                // Check if directory exists
+                if (!fs.existsSync(targetDir)) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: false, error: 'Directory does not exist' }));
+                    return;
+                }
+
+                // Read directory contents
+                const entries = await fs.promises.readdir(targetDir, { withFileTypes: true });
+                const directories = entries
+                    .filter(entry => entry.isDirectory())
+                    .map(entry => ({
+                        name: entry.name,
+                        path: path.join(targetDir, entry.name)
+                    }))
+                    .sort((a, b) => a.name.localeCompare(b.name));
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    success: true,
+                    currentPath: targetDir,
+                    parentPath: path.dirname(targetDir),
+                    directories
+                }));
+            } catch (error) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: error.message }));
+            }
+        });
+        return;
+    }
+
     // API: Compress images
     if (url === '/api/compress/run' && req.method === 'POST') {
         try {
@@ -334,7 +371,7 @@ server.listen(PORT, () => {
     console.log(`  Scanning: ${ROOT_DIR}`);
     console.log(`  Open: ${url}\n`);
 
-    // Auto open browser
-    const cmd = process.platform === 'win32' ? 'start' : process.platform === 'darwin' ? 'open' : 'xdg-open';
-    exec(`${cmd} ${url}`);
+    // Auto open browser (disabled to prevent opening multiple tabs on restart)
+    // const cmd = process.platform === 'win32' ? 'start' : process.platform === 'darwin' ? 'open' : 'xdg-open';
+    // exec(`${cmd} ${url}`);
 });

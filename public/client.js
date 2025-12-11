@@ -711,17 +711,146 @@ document.addEventListener('click', (e) => {
  * Change root path for scanning
  */
 window.changeRootPath = function() {
-    const newPath = prompt('Enter new root directory path:', '');
-    if (newPath && newPath.trim()) {
+    openFolderBrowser('root');
+};
+
+/**
+ * Browse for optimize path
+ */
+window.browseOptimizePath = function() {
+    openFolderBrowser('optimize');
+};
+
+// Folder Browser State
+let folderBrowserState = {
+    currentPath: null,
+    mode: null, // 'optimize' or 'root'
+    directories: []
+};
+
+/**
+ * Open folder browser modal
+ */
+async function openFolderBrowser(mode) {
+    folderBrowserState.mode = mode;
+
+    const modal = document.getElementById('folderBrowserModal');
+    modal.style.display = 'flex';
+
+    // Start from current root
+    const currentRoot = document.getElementById('pathInfo').textContent.replace('Scanning: ', '');
+    await loadDirectories(currentRoot);
+}
+
+/**
+ * Close folder browser
+ */
+window.closeFolderBrowser = function() {
+    const modal = document.getElementById('folderBrowserModal');
+    modal.style.display = 'none';
+};
+
+/**
+ * Load directories for current path
+ */
+async function loadDirectories(dirPath) {
+    const folderList = document.getElementById('folderList');
+    const currentPathEl = document.getElementById('browserCurrentPath');
+
+    // Show loading
+    folderList.innerHTML = '<div class="loading">Loading folders...</div>';
+
+    try {
+        const response = await fetch('/api/list-directories', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dirPath })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            folderBrowserState.currentPath = data.currentPath;
+            folderBrowserState.directories = data.directories;
+
+            // Update current path display
+            currentPathEl.textContent = data.currentPath;
+
+            // Render folder list
+            if (data.directories.length === 0) {
+                folderList.innerHTML = `
+                    <div class="empty-folder">
+                        <div class="empty-folder-icon">📂</div>
+                        <div>No subfolders found</div>
+                    </div>
+                `;
+            } else {
+                folderList.innerHTML = data.directories.map(dir => `
+                    <div class="folder-item" onclick="navigateToFolder('${dir.path.replace(/\\/g, '\\\\')}')">
+                        <div class="folder-icon">📁</div>
+                        <div class="folder-name">${dir.name}</div>
+                    </div>
+                `).join('');
+            }
+        } else {
+            folderList.innerHTML = `<div class="loading">❌ Error: ${data.error}</div>`;
+        }
+    } catch (error) {
+        folderList.innerHTML = `<div class="loading">❌ Error loading folders</div>`;
+    }
+}
+
+/**
+ * Navigate to a folder
+ */
+window.navigateToFolder = async function(folderPath) {
+    await loadDirectories(folderPath);
+};
+
+/**
+ * Navigate up one level
+ */
+window.navigateUp = async function() {
+    const currentPathEl = document.getElementById('browserCurrentPath');
+    const currentPath = currentPathEl.textContent;
+
+    // Get parent directory by removing last segment
+    const parentPath = currentPath.split(/[\\/]/).slice(0, -1).join('\\');
+
+    if (parentPath) {
+        await loadDirectories(parentPath);
+    }
+};
+
+/**
+ * Select current folder
+ */
+window.selectCurrentFolder = function() {
+    const currentPath = folderBrowserState.currentPath;
+    const currentRoot = document.getElementById('pathInfo').textContent.replace('Scanning: ', '');
+
+    if (folderBrowserState.mode === 'optimize') {
+        // Calculate relative path from root
+        let relativePath = '';
+        if (currentPath.startsWith(currentRoot)) {
+            relativePath = currentPath.substring(currentRoot.length).replace(/^[\\/]/, '');
+        } else {
+            relativePath = currentPath;
+        }
+
+        document.getElementById('optimizePath').value = relativePath;
+        window.closeFolderBrowser();
+    } else if (folderBrowserState.mode === 'root') {
+        // Change root directory
         fetch('/api/set-root', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rootPath: newPath.trim() })
+            body: JSON.stringify({ rootPath: currentPath })
         })
         .then(res => res.json())
         .then(result => {
             if (result.success) {
-                alert(`✅ Root directory changed to:\n${result.rootPath}`);
+                window.closeFolderBrowser();
                 location.reload();
             } else {
                 alert(`❌ Error: ${result.error}`);
@@ -730,18 +859,6 @@ window.changeRootPath = function() {
         .catch(error => {
             alert(`❌ Error: ${error.message}`);
         });
-    }
-};
-
-/**
- * Browse for optimize path
- */
-window.browseOptimizePath = function() {
-    const currentRoot = document.getElementById('pathInfo').textContent;
-    const relativePath = prompt('Enter folder path to optimize (relative to current root):\nLeave empty to optimize entire root directory', '');
-
-    if (relativePath !== null) {
-        document.getElementById('optimizePath').value = relativePath.trim();
     }
 };
 
