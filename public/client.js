@@ -473,16 +473,23 @@ window.confirmResize = async function() {
     const width = widthInput.value;
     const height = heightInput.value;
 
-    if (!width || isNaN(width) || !height || isNaN(height)) {
-        alert('❌ Please enter valid width and height values');
+    // At least one dimension must be provided
+    if ((!width || width === '') && (!height || height === '')) {
+        alert('❌ Please enter at least width or height');
         return;
     }
 
-    const newWidth = parseInt(width);
-    const newHeight = parseInt(height);
+    // Validate provided values
+    let newWidth = width ? parseInt(width) : null;
+    let newHeight = height ? parseInt(height) : null;
 
-    if (newWidth <= 0 || newWidth > 4096 || newHeight <= 0 || newHeight > 4096) {
-        alert('❌ Width and height must be between 1 and 4096 pixels');
+    if (newWidth !== null && (isNaN(newWidth) || newWidth <= 0 || newWidth > 4096)) {
+        alert('❌ Width must be between 1 and 4096 pixels');
+        return;
+    }
+
+    if (newHeight !== null && (isNaN(newHeight) || newHeight <= 0 || newHeight > 4096)) {
+        alert('❌ Height must be between 1 and 4096 pixels');
         return;
     }
 

@@ -128,8 +128,23 @@ const server = http.createServer(async (req, res) => {
                 const image = sharp(fullPath);
                 const metadata = await image.metadata();
 
+                // Calculate final dimensions
+                let finalWidth = width;
+                let finalHeight = height;
+
+                // If only width provided, calculate height maintaining aspect ratio
+                if (width && !height) {
+                    const aspectRatio = metadata.height / metadata.width;
+                    finalHeight = Math.round(width * aspectRatio);
+                }
+                // If only height provided, calculate width maintaining aspect ratio
+                else if (height && !width) {
+                    const aspectRatio = metadata.width / metadata.height;
+                    finalWidth = Math.round(height * aspectRatio);
+                }
+
                 // Check if size actually changed
-                if (metadata.width === width && metadata.height === height) {
+                if (metadata.width === finalWidth && metadata.height === finalHeight) {
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({
                         success: true,
@@ -140,36 +155,18 @@ const server = http.createServer(async (req, res) => {
                         saved: 0,
                         originalWidth: metadata.width,
                         originalHeight: metadata.height,
-                        newWidth: width,
-                        newHeight: height
+                        newWidth: finalWidth,
+                        newHeight: finalHeight
                     }));
                     return;
                 }
 
-                // Resize image to exact dimensions with lossless settings
-                let resizedImage = image.resize(width, height, {
-                    fit: 'fill'
-                });
-
-                // Preserve original format and quality
-                if (metadata.format === 'png') {
-                    resizedImage = resizedImage.png({
-                        compressionLevel: 9,
-                        quality: 100
-                    });
-                } else if (metadata.format === 'jpeg' || metadata.format === 'jpg') {
-                    resizedImage = resizedImage.jpeg({
-                        quality: 95,
-                        mozjpeg: true
-                    });
-                } else if (metadata.format === 'webp') {
-                    resizedImage = resizedImage.webp({
-                        quality: 95,
-                        lossless: false
-                    });
-                }
-
-                const resizedBuffer = await resizedImage.toBuffer();
+                // Resize image - maintain aspect ratio if only one dimension provided
+                const resizedBuffer = await image
+                    .resize(finalWidth, finalHeight, {
+                        fit: 'fill'
+                    })
+                    .toBuffer();
                 const newMetadata = await sharp(resizedBuffer).metadata();
 
                 // Save resized image
