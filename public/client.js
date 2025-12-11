@@ -93,16 +93,63 @@ function renderFiles() {
         return a.name.localeCompare(b.name);
     });
 
-    document.getElementById('fileList').innerHTML = f.slice(0, 100).map(x => `
-        <div class="file-item">
+    document.getElementById('fileList').innerHTML = f.slice(0, 100).map((x, idx) => `
+        <div class="file-item" data-file-path="${x.path}" data-file-type="${x.type}" data-file-idx="${idx}">
             <div class="file-icon ${x.type}">${icons[x.type] || icons.other}</div>
             <div class="file-info">
                 <div class="file-name">${x.name}</div>
                 <div class="file-path">${x.path}</div>
             </div>
             <div class="file-size ${sizeClass(x.size)}">${fmt(x.size)}</div>
+            <div class="file-dropdown" style="display: none;">
+                ${x.type === 'image' ? `
+                    <div class="dropdown-item" data-action="resize">📐 Resize</div>
+                    <div class="dropdown-item" data-action="compress">⚡ Compress</div>
+                ` : `
+                    <div class="dropdown-item disabled" data-action="compress">⚡ Compress</div>
+                `}
+            </div>
         </div>
     `).join('');
+
+    // Add click handlers for file items
+    document.querySelectorAll('.file-item').forEach(item => {
+        item.onclick = () => {
+            // Close all other dropdowns
+            document.querySelectorAll('.file-dropdown').forEach(d => {
+                if (d !== item.querySelector('.file-dropdown')) {
+                    d.style.display = 'none';
+                }
+            });
+
+            // Toggle current dropdown
+            const dropdown = item.querySelector('.file-dropdown');
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        };
+    });
+
+    // Add click handlers for dropdown items
+    document.querySelectorAll('.dropdown-item').forEach(item => {
+        item.onclick = (e) => {
+            e.stopPropagation();
+
+            if (item.classList.contains('disabled')) return;
+
+            const action = item.getAttribute('data-action');
+            const fileItem = item.closest('.file-item');
+            const filePath = fileItem.getAttribute('data-file-path');
+            const fileType = fileItem.getAttribute('data-file-type');
+
+            // Hide dropdown
+            fileItem.querySelector('.file-dropdown').style.display = 'none';
+
+            if (action === 'compress' && fileType === 'image') {
+                compressSingleImage(filePath);
+            } else if (action === 'resize' && fileType === 'image') {
+                resizeImage(filePath);
+            }
+        };
+    });
 }
 
 /**
@@ -280,6 +327,85 @@ async function loadCompressEstimate() {
 }
 
 /**
+ * Resize a single image
+ */
+async function resizeImage(filePath) {
+    const width = prompt('Enter new width (px):\n(Height will be auto-scaled to maintain aspect ratio)', '512');
+    if (!width || isNaN(width)) return;
+
+    const maxWidth = parseInt(width);
+    if (maxWidth <= 0) {
+        alert('❌ Invalid width value');
+        return;
+    }
+
+    if (!confirm(`Resize this image to ${maxWidth}px width?\n\n${filePath}\n\nThis will overwrite the original file.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/resize/single', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filePath, maxWidth })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(`✅ Image resized successfully!\n\n` +
+                  `Original: ${result.originalWidth}x${result.originalHeight} (${fmt(result.originalSize)})\n` +
+                  `Resized: ${result.newWidth}x${result.newHeight} (${fmt(result.newSize)})\n` +
+                  `Saved: ${fmt(result.saved)} (${((result.saved/result.originalSize)*100).toFixed(1)}%)`);
+
+            // Reload data to show updated size
+            load();
+        } else {
+            alert(`❌ Resize failed: ${result.error}`);
+        }
+    } catch (error) {
+        alert(`❌ Error: ${error.message}`);
+    }
+}
+
+/**
+ * Compress a single image file
+ */
+async function compressSingleImage(filePath) {
+    if (!confirm(`Compress this image?\n\n${filePath}\n\nThis will overwrite the original file.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/compress/single', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filePath, quality: 80 })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            if (result.skipped) {
+                alert(`ℹ️ No compression needed\n\n${result.reason}`);
+            } else {
+                alert(`✅ Image compressed successfully!\n\n` +
+                      `Original: ${fmt(result.originalSize)}\n` +
+                      `Compressed: ${fmt(result.newSize)}\n` +
+                      `Saved: ${fmt(result.saved)} (${((result.saved/result.originalSize)*100).toFixed(1)}%)`);
+
+                // Reload data to show updated size
+                load();
+            }
+        } else {
+            alert(`❌ Compression failed: ${result.error}`);
+        }
+    } catch (error) {
+        alert(`❌ Error: ${error.message}`);
+    }
+}
+
+/**
  * Handle image compression
  */
 async function compressImages() {
@@ -353,6 +479,15 @@ async function compressImages() {
         btn.innerHTML = '<span class="btn-icon">⚡</span><span>Optimize All Images</span>';
     }
 }
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.file-item')) {
+        document.querySelectorAll('.file-dropdown').forEach(d => {
+            d.style.display = 'none';
+        });
+    }
+});
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {

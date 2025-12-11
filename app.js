@@ -67,6 +67,93 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // API: Resize single image
+    if (url === '/api/resize/single' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', async () => {
+            try {
+                const { filePath, maxWidth } = JSON.parse(body);
+                const fullPath = path.resolve(ROOT_DIR, filePath);
+
+                // Security check: ensure path is within ROOT_DIR
+                if (!fullPath.startsWith(ROOT_DIR)) {
+                    res.writeHead(403, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: false, error: 'Invalid path' }));
+                    return;
+                }
+
+                const sharp = require('sharp');
+                const fs = require('fs').promises;
+
+                // Get original size and dimensions
+                const stats = await fs.stat(fullPath);
+                const originalSize = stats.size;
+
+                const image = sharp(fullPath);
+                const metadata = await image.metadata();
+
+                // Resize image
+                const resizedBuffer = await image
+                    .resize(maxWidth, null, {
+                        fit: 'inside',
+                        withoutEnlargement: true
+                    })
+                    .toBuffer();
+
+                const newMetadata = await sharp(resizedBuffer).metadata();
+
+                // Save resized image
+                await fs.writeFile(fullPath, resizedBuffer);
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    success: true,
+                    originalSize,
+                    newSize: resizedBuffer.length,
+                    saved: originalSize - resizedBuffer.length,
+                    originalWidth: metadata.width,
+                    originalHeight: metadata.height,
+                    newWidth: newMetadata.width,
+                    newHeight: newMetadata.height
+                }));
+            } catch (error) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: error.message }));
+            }
+        });
+        return;
+    }
+
+    // API: Compress single image
+    if (url === '/api/compress/single' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', async () => {
+            try {
+                const { filePath, quality = 80 } = JSON.parse(body);
+                const fullPath = path.resolve(ROOT_DIR, filePath);
+
+                // Security check: ensure path is within ROOT_DIR
+                if (!fullPath.startsWith(ROOT_DIR)) {
+                    res.writeHead(403, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: false, error: 'Invalid path' }));
+                    return;
+                }
+
+                const { compressImage } = require('./src/compressor');
+                const result = await compressImage(fullPath, { quality });
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(result));
+            } catch (error) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: error.message }));
+            }
+        });
+        return;
+    }
+
     // API: Compress images
     if (url === '/api/compress/run' && req.method === 'POST') {
         try {
