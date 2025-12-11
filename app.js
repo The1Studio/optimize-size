@@ -12,7 +12,7 @@ const { scanDirectory } = require('./src/scanner');
 const { compressDirectory, estimateCompression } = require('./src/compressor');
 
 const PORT = 3456;
-const ROOT_DIR = path.resolve(__dirname, '../../assets');
+let ROOT_DIR = path.resolve(__dirname, '../../assets');
 const PUBLIC_DIR = path.resolve(__dirname, 'public');
 
 // MIME types for static files
@@ -43,9 +43,22 @@ function serveStatic(filePath, res) {
     });
 }
 
+// Track last modified time for auto-reload
+let lastModifiedTime = Date.now();
+fs.watch(PUBLIC_DIR, { recursive: true }, () => {
+    lastModifiedTime = Date.now();
+});
+
 // Create HTTP Server
 const server = http.createServer(async (req, res) => {
     const url = req.url;
+
+    // API: Check for updates (for auto-reload)
+    if (url === '/api/reload-check') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ lastModified: lastModifiedTime }));
+        return;
+    }
 
     // API: Scan directory
     if (url === '/api/scan') {
@@ -221,6 +234,36 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // API: Set root directory
+    if (url === '/api/set-root' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', async () => {
+            try {
+                const { rootPath } = JSON.parse(body);
+                const newRootPath = path.resolve(rootPath);
+
+                // Check if directory exists
+                const fs = require('fs');
+                if (!fs.existsSync(newRootPath)) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: false, error: 'Directory does not exist' }));
+                    return;
+                }
+
+                // Update ROOT_DIR
+                ROOT_DIR = newRootPath;
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true, rootPath: ROOT_DIR }));
+            } catch (error) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: error.message }));
+            }
+        });
+        return;
+    }
+
     // API: Compress images
     if (url === '/api/compress/run' && req.method === 'POST') {
         try {
@@ -229,6 +272,28 @@ const server = http.createServer(async (req, res) => {
             req.on('data', chunk => { body += chunk; });
             req.on('end', async () => {
                 const options = body ? JSON.parse(body) : {};
+                const { targetPath } = options;
+
+                // Determine directory to compress
+                let compressDir = ROOT_DIR;
+                if (targetPath) {
+                    compressDir = path.resolve(ROOT_DIR, targetPath);
+
+                    // Security check: ensure path is within ROOT_DIR
+                    if (!compressDir.startsWith(ROOT_DIR)) {
+                        res.writeHead(403, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'Invalid path' }));
+                        return;
+                    }
+
+                    // Check if directory exists
+                    const fs = require('fs');
+                    if (!fs.existsSync(compressDir)) {
+                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'Directory does not exist' }));
+                        return;
+                    }
+                }
 
                 // Send headers for Server-Sent Events
                 res.writeHead(200, {
@@ -243,7 +308,7 @@ const server = http.createServer(async (req, res) => {
                 };
 
                 try {
-                    const results = await compressDirectory(ROOT_DIR, options, progressCallback);
+                    const results = await compressDirectory(compressDir, options, progressCallback);
                     res.write(`data: ${JSON.stringify({ type: 'complete', results })}\n\n`);
                     res.end();
                 } catch (error) {

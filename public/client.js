@@ -621,6 +621,7 @@ async function compressImages() {
     const progressWrapper = document.getElementById('compressProgress');
     const progressFill = document.getElementById('progressFill');
     const progressText = document.getElementById('progressText');
+    const optimizePath = document.getElementById('optimizePath').value.trim();
 
     // Disable button
     btn.disabled = true;
@@ -635,7 +636,10 @@ async function compressImages() {
         const response = await fetch('/api/compress/run', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ quality: 80 })
+            body: JSON.stringify({
+                quality: 80,
+                targetPath: optimizePath || null
+            })
         });
 
         const reader = response.body.getReader();
@@ -703,12 +707,69 @@ document.addEventListener('click', (e) => {
     }
 });
 
+/**
+ * Change root path for scanning
+ */
+window.changeRootPath = function() {
+    const newPath = prompt('Enter new root directory path:', '');
+    if (newPath && newPath.trim()) {
+        fetch('/api/set-root', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rootPath: newPath.trim() })
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                alert(`✅ Root directory changed to:\n${result.rootPath}`);
+                location.reload();
+            } else {
+                alert(`❌ Error: ${result.error}`);
+            }
+        })
+        .catch(error => {
+            alert(`❌ Error: ${error.message}`);
+        });
+    }
+};
+
+/**
+ * Browse for optimize path
+ */
+window.browseOptimizePath = function() {
+    const currentRoot = document.getElementById('pathInfo').textContent;
+    const relativePath = prompt('Enter folder path to optimize (relative to current root):\nLeave empty to optimize entire root directory', '');
+
+    if (relativePath !== null) {
+        document.getElementById('optimizePath').value = relativePath.trim();
+    }
+};
+
+// Auto-reload feature - check for file changes
+let lastKnownModified = Date.now();
+function startAutoReload() {
+    setInterval(async () => {
+        try {
+            const res = await fetch('/api/reload-check');
+            const data = await res.json();
+
+            if (data.lastModified > lastKnownModified) {
+                console.log('Files changed, reloading...');
+                location.reload();
+            }
+        } catch (err) {
+            // Server might be restarting, ignore
+        }
+    }, 1000); // Check every second
+}
+
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
     initEventListeners();
     load();
     loadCompressEstimate();
+    startAutoReload(); // Start auto-reload
 
     // Bind compress button
     document.getElementById('btnCompressImages').onclick = compressImages;

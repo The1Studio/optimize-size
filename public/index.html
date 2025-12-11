@@ -21,7 +21,10 @@
                 <button class="refresh-btn" onclick="location.reload()">🔄 Refresh</button>
             </div>
         </div>
-        <div class="path-info" id="pathInfo">Loading...</div>
+        <div class="path-info">
+            <span id="pathInfo">Loading...</span>
+            <button class="path-change-btn" onclick="changeRootPath()" title="Change scan directory">📂 Change Directory</button>
+        </div>
     </div>
 
     <div class="container">
@@ -99,10 +102,15 @@
                         <h3>Image & Texture Compression</h3>
                     </div>
                     <p class="tool-desc">Optimize PNG/JPG images, reduce file size without quality loss</p>
+                    <div class="optimize-path">
+                        <label>Optimize Directory:</label>
+                        <input type="text" id="optimizePath" class="path-input" placeholder="Leave empty for current root" />
+                        <button class="btn-browse" onclick="browseOptimizePath()">📁 Browse</button>
+                    </div>
                     <div class="tool-actions">
                         <button class="btn-tool" id="btnCompressImages">
                             <span class="btn-icon">⚡</span>
-                            <span>Optimize All Images</span>
+                            <span>Optimize Images</span>
                         </button>
                         <div class="tool-stats" id="imageStats">
                             <span class="stat-item">Found: <strong id="totalImages">0</strong> images</span>
