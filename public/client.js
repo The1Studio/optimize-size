@@ -100,7 +100,6 @@ function renderFiles() {
         if (x.type === 'meta') return false;
         if (search && !x.path.toLowerCase().includes(search)) return false;
         if (type !== 'all' && x.type !== type) return false;
-        if (showLargeOnly && x.size < 100 * 1024) return false;
         return true;
     });
 
@@ -304,12 +303,6 @@ function initEventListeners() {
     document.getElementById('searchBox').oninput = renderFiles;
     document.getElementById('sortBy').onchange = renderFiles;
     document.getElementById('filterType').onchange = renderFiles;
-    document.getElementById('showLarge').onclick = (e) => {
-        showLargeOnly = !showLargeOnly;
-        e.target.classList.toggle('active', showLargeOnly);
-        e.target.textContent = showLargeOnly ? 'All' : '> 100KB';
-        renderFiles();
-    };
 }
 
 /**
