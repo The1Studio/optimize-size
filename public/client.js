@@ -122,6 +122,8 @@ function renderFiles() {
                 ${x.type === 'image' ? `
                     <div class="dropdown-item" data-action="resize">📐 Resize</div>
                     <div class="dropdown-item" data-action="compress">⚡ Compress</div>
+                ` : x.type === 'audio' ? `
+                    <div class="dropdown-item" data-action="compress">⚡ Compress</div>
                 ` : `
                     <div class="dropdown-item disabled" data-action="compress">⚡ Compress</div>
                 `}
@@ -162,6 +164,8 @@ function renderFiles() {
 
             if (action === 'compress' && fileType === 'image') {
                 compressSingleImage(filePath);
+            } else if (action === 'compress' && fileType === 'audio') {
+                compressSingleAudio(filePath);
             } else if (action === 'resize' && fileType === 'image') {
                 resizeImage(filePath);
             }
@@ -470,6 +474,219 @@ function showBatchResultModal(data) {
 }
 
 /**
+ * Show single audio result modal
+ */
+function showSingleAudioResultModal(data) {
+    const modal = document.getElementById('resultModal');
+    const percentValue = document.getElementById('percentValue');
+    const circleProgress = document.getElementById('circleProgress');
+    const resultTitle = document.getElementById('resultTitle');
+    const resultSubtitle = document.getElementById('resultSubtitle');
+    const resultDetails = document.getElementById('resultDetails');
+
+    // Set percentage text
+    percentValue.textContent = `${data.percent}%`;
+
+    // Animate circle
+    const circumference = 339.292;
+    const offset = circumference - (data.percent / 100) * circumference;
+    setTimeout(() => {
+        circleProgress.style.strokeDashoffset = offset;
+    }, 100);
+
+    // Set title and details
+    resultTitle.textContent = 'Audio Compression Complete!';
+    const fileName = data.filePath.split('/').pop();
+    resultSubtitle.textContent = `Compressed: ${fileName}`;
+
+    let detailsHTML = `
+        <div class="detail-row">
+            <span class="detail-label">Original Size</span>
+            <span class="detail-value">${fmt(data.originalSize)}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">New Size</span>
+            <span class="detail-value">${fmt(data.newSize)}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Space Saved</span>
+            <span class="detail-value highlight">${fmt(data.savedSize)} (${data.percent}%)</span>
+        </div>
+    `;
+
+    if (data.converted) {
+        detailsHTML += `
+        <div class="detail-row">
+            <span class="detail-label">Format Conversion</span>
+            <span class="detail-value highlight">${data.originalFormat.toUpperCase()} → ${data.newFormat.toUpperCase()}</span>
+        </div>
+        `;
+    }
+
+    resultDetails.innerHTML = detailsHTML;
+
+    // Show modal
+    modal.style.display = 'flex';
+}
+
+/**
+ * Show batch audio result modal
+ */
+function showBatchAudioResultModal(data) {
+    const modal = document.getElementById('resultModal');
+    const percentValue = document.getElementById('percentValue');
+    const circleProgress = document.getElementById('circleProgress');
+    const resultTitle = document.getElementById('resultTitle');
+    const resultSubtitle = document.getElementById('resultSubtitle');
+    const resultDetails = document.getElementById('resultDetails');
+
+    // Set percentage text
+    percentValue.textContent = `${data.percent}%`;
+
+    // Animate circle
+    const circumference = 339.292;
+    const offset = circumference - (data.percent / 100) * circumference;
+    setTimeout(() => {
+        circleProgress.style.strokeDashoffset = offset;
+    }, 100);
+
+    // Set title and details
+    resultTitle.textContent = 'Batch Audio Compression Complete!';
+    resultSubtitle.textContent = `Compressed ${data.compressed} out of ${data.total} audio files`;
+    resultDetails.innerHTML = `
+        <div class="detail-row">
+            <span class="detail-label">Total Audio Files</span>
+            <span class="detail-value">${data.total}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">✅ Compressed</span>
+            <span class="detail-value highlight">${data.compressed}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">🔄 Converted Format</span>
+            <span class="detail-value highlight">${data.converted}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">⏭️ Skipped</span>
+            <span class="detail-value">${data.skipped}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">❌ Failed</span>
+            <span class="detail-value">${data.failed}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Original Size</span>
+            <span class="detail-value">${fmt(data.originalSize)}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">New Size</span>
+            <span class="detail-value">${fmt(data.newSize)}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Space Saved</span>
+            <span class="detail-value highlight">${fmt(data.savedSize)} (${data.percent}%)</span>
+        </div>
+    `;
+
+    // Show modal
+    modal.style.display = 'flex';
+}
+
+/**
+ * Show optimize all result modal (combined images + audio)
+ */
+function showOptimizeAllResultModal(data) {
+    const modal = document.getElementById('resultModal');
+    const percentValue = document.getElementById('percentValue');
+    const circleProgress = document.getElementById('circleProgress');
+    const resultTitle = document.getElementById('resultTitle');
+    const resultSubtitle = document.getElementById('resultSubtitle');
+    const resultDetails = document.getElementById('resultDetails');
+
+    // Set percentage text
+    percentValue.textContent = `${data.totalPercent}%`;
+
+    // Animate circle
+    const circumference = 339.292;
+    const offset = circumference - (data.totalPercent / 100) * circumference;
+    setTimeout(() => {
+        circleProgress.style.strokeDashoffset = offset;
+    }, 100);
+
+    // Set title
+    resultTitle.textContent = 'Optimize All Complete!';
+
+    let subtitle = [];
+    if (data.imageResults) subtitle.push(`${data.imageResults.compressed} images`);
+    if (data.audioResults) subtitle.push(`${data.audioResults.compressed} audio files`);
+    resultSubtitle.textContent = `Optimized: ${subtitle.join(' + ')}`;
+
+    // Build details HTML
+    let detailsHTML = '';
+
+    // Images section
+    if (data.imageResults) {
+        detailsHTML += `
+        <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
+            <h4 style="margin: 0 0 8px 0; color: var(--text-primary); font-size: 14px;">🖼️ Images</h4>
+            <div class="detail-row">
+                <span class="detail-label">Compressed</span>
+                <span class="detail-value highlight">${data.imageResults.compressed} / ${data.imageResults.total}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Saved</span>
+                <span class="detail-value">${fmt(data.imageResults.savedSize)}</span>
+            </div>
+        </div>
+        `;
+    }
+
+    // Audio section
+    if (data.audioResults) {
+        detailsHTML += `
+        <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
+            <h4 style="margin: 0 0 8px 0; color: var(--text-primary); font-size: 14px;">🎵 Audio</h4>
+            <div class="detail-row">
+                <span class="detail-label">Compressed</span>
+                <span class="detail-value highlight">${data.audioResults.compressed} / ${data.audioResults.total}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Converted</span>
+                <span class="detail-value">${data.audioResults.converted}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Saved</span>
+                <span class="detail-value">${fmt(data.audioResults.savedSize)}</span>
+            </div>
+        </div>
+        `;
+    }
+
+    // Total section
+    detailsHTML += `
+        <div style="padding-top: 12px; border-top: 2px solid var(--border-color);">
+            <div class="detail-row">
+                <span class="detail-label">Total Original Size</span>
+                <span class="detail-value">${fmt(data.totalOriginalSize)}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Total New Size</span>
+                <span class="detail-value">${fmt(data.totalNewSize)}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Total Space Saved</span>
+                <span class="detail-value highlight" style="font-size: 18px; font-weight: 700;">${fmt(data.totalSavedSize)} (${data.totalPercent}%)</span>
+            </div>
+        </div>
+    `;
+
+    resultDetails.innerHTML = detailsHTML;
+
+    // Show modal
+    modal.style.display = 'flex';
+}
+
+/**
  * Close modal
  */
 window.closeModal = function() {
@@ -480,7 +697,7 @@ window.closeModal = function() {
     const circleProgress = document.getElementById('circleProgress');
     circleProgress.style.strokeDashoffset = 339.292;
 
-    // Reload data
+    // Reload data in background without full page refresh
     load();
 };
 
@@ -621,6 +838,58 @@ async function compressSingleImage(filePath) {
                 alert(`ℹ️ No compression needed\n\n${result.reason}`);
             } else {
                 showResultModal({ ...result, type: 'compress' });
+            }
+        } else {
+            alert(`❌ Compression failed: ${result.error}`);
+        }
+    } catch (error) {
+        alert(`❌ Error: ${error.message}`);
+    }
+}
+
+/**
+ * Compress single audio file
+ */
+async function compressSingleAudio(filePath) {
+    // Get current audio settings
+    const bitrate = document.getElementById('audioBitrate').value;
+    const channels = document.getElementById('audioChannels').value;
+    const format = document.getElementById('audioFormat').value;
+
+    if (!confirm(`Compress this audio file?\n\n${filePath}\n\nSettings:\n- Bitrate: ${bitrate}\n- Channels: ${channels || 'Original'}\n- Format: ${format || 'Auto'}\n\nThis will overwrite the original file.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/audio/compress/single', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                filePath,
+                bitrate,
+                channels: channels ? parseInt(channels) : null,
+                format: format || null
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            if (result.skipped) {
+                alert(`ℹ️ No compression needed\n\n${result.reason}`);
+            } else {
+                // Show result in modal like images
+                const percent = ((result.saved / result.originalSize) * 100).toFixed(1);
+                showSingleAudioResultModal({
+                    originalSize: result.originalSize,
+                    newSize: result.newSize,
+                    savedSize: result.saved,
+                    percent: percent,
+                    converted: result.converted,
+                    originalFormat: result.originalFormat,
+                    newFormat: result.newFormat,
+                    filePath: filePath
+                });
             }
         } else {
             alert(`❌ Compression failed: ${result.error}`);
@@ -960,3 +1229,279 @@ document.addEventListener('DOMContentLoaded', () => {
     // Bind compress button
     document.getElementById('btnCompressImages').onclick = compressImages;
 });
+// Audio Compression Client-Side Functions
+// Append these to client.js
+
+
+/**
+ * Refresh audio statistics for optimize folder
+ */
+async function refreshAudioStats(relativePath) {
+    try {
+        const response = await fetch('/api/audio/estimate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ targetPath: relativePath })
+        });
+
+        const data = await response.json();
+
+        if (data.totalAudio !== undefined) {
+            // Update total audio count
+            const totalAudioEl = document.getElementById('totalAudio');
+            if (totalAudioEl) {
+                totalAudioEl.textContent = data.totalAudio;
+            }
+
+            // Update potential savings
+            const audioSavingEl = document.getElementById('audioSaving');
+            if (audioSavingEl && data.estimatedSaving) {
+                const savingKB = (data.estimatedSaving / 1024).toFixed(2);
+                audioSavingEl.textContent = `~${savingKB} KB`;
+            }
+        }
+    } catch (error) {
+        console.error('Failed to refresh audio stats:', error);
+    }
+}
+
+/**
+ * Initialize Audio Compression
+ */
+function initAudioCompression() {
+    const btnCompressAudio = document.getElementById('btnCompressAudio');
+
+    if (btnCompressAudio) {
+        btnCompressAudio.addEventListener('click', async () => {
+            const targetPath = document.getElementById('optimizePath').value.trim();
+            const bitrate = document.getElementById('audioBitrate').value;
+            const channels = document.getElementById('audioChannels').value;
+            const format = document.getElementById('audioFormat').value;
+
+            // Confirm before starting
+            if (!confirm('This will compress all audio files. Continue?')) {
+                return;
+            }
+
+            // Show progress
+            const progressWrapper = document.getElementById('audioCompressProgress');
+            const progressFill = document.getElementById('audioProgressFill');
+            const progressText = document.getElementById('audioProgressText');
+            progressWrapper.classList.remove('hidden');
+            btnCompressAudio.disabled = true;
+
+            try {
+                const response = await fetch('/api/audio/compress', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        targetPath,
+                        bitrate,
+                        channels: channels ? parseInt(channels) : null,
+                        format: format || null
+                    })
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n').filter(l => l.trim().startsWith('data:'));
+
+                    for (const line of lines) {
+                        const data = JSON.parse(line.replace('data:', '').trim());
+
+                        if (data.type === 'progress') {
+                            progressText.textContent = `Processing ${data.current}...`;
+                        } else if (data.type === 'complete') {
+                            const results = data.results;
+                            progressWrapper.classList.add('hidden');
+                            btnCompressAudio.disabled = false;
+
+                            // Show results in modal
+                            const percentSaved = results.originalSize > 0
+                                ? ((results.savedSize / results.originalSize) * 100).toFixed(1)
+                                : 0;
+
+                            showBatchAudioResultModal({
+                                total: results.total,
+                                compressed: results.compressed,
+                                converted: results.converted,
+                                skipped: results.skipped,
+                                failed: results.failed,
+                                originalSize: results.originalSize,
+                                newSize: results.newSize,
+                                savedSize: results.savedSize,
+                                percent: percentSaved
+                            });
+
+                            // Refresh stats in background
+                            await refreshAudioStats(targetPath);
+                        } else if (data.type === 'error') {
+                            progressWrapper.classList.add('hidden');
+                            btnCompressAudio.disabled = false;
+                            alert(`❌ Error: ${data.error}`);
+                        }
+                    }
+                }
+            } catch (error) {
+                progressWrapper.classList.add('hidden');
+                btnCompressAudio.disabled = false;
+                alert(`❌ Error: ${error.message}`);
+            }
+        });
+    }
+
+    // Load initial audio stats
+    refreshAudioStats('');
+}
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAudioCompression);
+} else {
+    initAudioCompression();
+}
+
+/**
+ * Initialize Optimize All
+ */
+function initOptimizeAll() {
+    const btnOptimizeAll = document.getElementById('btnOptimizeAll');
+
+    if (btnOptimizeAll) {
+        btnOptimizeAll.addEventListener('click', async () => {
+            const targetPath = document.getElementById('optimizePath').value.trim();
+            const enableImages = document.getElementById('enableImages').checked;
+            const enableAudio = document.getElementById('enableAudio').checked;
+
+            if (!enableImages && !enableAudio) {
+                alert('Please enable at least one optimization type');
+                return;
+            }
+
+            if (!confirm('This will run all enabled optimizations. Continue?')) {
+                return;
+            }
+
+            const progressWrapper = document.getElementById('optimizeAllProgress');
+            const progressFill = document.getElementById('optimizeAllProgressFill');
+            const progressText = document.getElementById('optimizeAllProgressText');
+            progressWrapper.classList.remove('hidden');
+            btnOptimizeAll.disabled = true;
+
+            let totalResults = { images: null, audio: null };
+
+            try {
+                // Run image compression
+                if (enableImages) {
+                    progressText.textContent = 'Compressing images...';
+                    const imgResponse = await fetch('/api/compress/run', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ targetPath })
+                    });
+
+                    const imgReader = imgResponse.body.getReader();
+                    const decoder = new TextDecoder();
+                    while (true) {
+                        const { done, value } = await imgReader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value);
+                        const lines = chunk.split('\n').filter(l => l.trim().startsWith('data:'));
+                        for (const line of lines) {
+                            const data = JSON.parse(line.replace('data:', '').trim());
+                            if (data.type === 'complete') {
+                                totalResults.images = data.results;
+                            }
+                        }
+                    }
+                }
+
+                // Run audio compression
+                if (enableAudio) {
+                    progressText.textContent = 'Compressing audio...';
+                    const bitrate = document.getElementById('audioBitrate').value;
+                    const channels = document.getElementById('audioChannels').value;
+                    const format = document.getElementById('audioFormat').value;
+
+                    const audioResponse = await fetch('/api/audio/compress', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ targetPath, bitrate, channels: channels ? parseInt(channels) : null, format: format || null })
+                    });
+
+                    const audioReader = audioResponse.body.getReader();
+                    const decoder = new TextDecoder();
+                    while (true) {
+                        const { done, value } = await audioReader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value);
+                        const lines = chunk.split('\n').filter(l => l.trim().startsWith('data:'));
+                        for (const line of lines) {
+                            const data = JSON.parse(line.replace('data:', '').trim());
+                            if (data.type === 'complete') {
+                                totalResults.audio = data.results;
+                            }
+                        }
+                    }
+                }
+
+                // Show combined results
+                progressWrapper.classList.add('hidden');
+                btnOptimizeAll.disabled = false;
+
+                // Calculate combined stats
+                let totalOriginalSize = 0;
+                let totalNewSize = 0;
+                let totalSavedSize = 0;
+
+                if (totalResults.images) {
+                    totalOriginalSize += totalResults.images.originalSize;
+                    totalNewSize += totalResults.images.newSize;
+                    totalSavedSize += totalResults.images.savedSize;
+                }
+                if (totalResults.audio) {
+                    totalOriginalSize += totalResults.audio.originalSize;
+                    totalNewSize += totalResults.audio.newSize;
+                    totalSavedSize += totalResults.audio.savedSize;
+                }
+
+                const totalPercent = totalOriginalSize > 0
+                    ? ((totalSavedSize / totalOriginalSize) * 100).toFixed(1)
+                    : 0;
+
+                showOptimizeAllResultModal({
+                    totalOriginalSize,
+                    totalNewSize,
+                    totalSavedSize,
+                    totalPercent,
+                    imageResults: totalResults.images,
+                    audioResults: totalResults.audio
+                });
+
+                // Refresh data in background
+                load();
+            } catch (error) {
+                progressWrapper.classList.add('hidden');
+                btnOptimizeAll.disabled = false;
+                alert(`❌ Error: ${error.message}`);
+            }
+        });
+    }
+}
+
+// Initialize on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        initAudioCompression();
+        initOptimizeAll();
+    });
+} else {
+    initAudioCompression();
+    initOptimizeAll();
+}

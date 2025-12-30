@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const { scanDirectory } = require('./src/scanner');
 const { compressDirectory, estimateCompression } = require('./src/compressor');
+const { compressAudioDirectory, estimateAudioCompression } = require('./src/audioCompressor');
 
 const PORT = 3456;
 let ROOT_DIR = path.resolve(__dirname, '../../assets');
@@ -388,6 +389,125 @@ const server = http.createServer(async (req, res) => {
 
                 try {
                     const results = await compressDirectory(compressDir, options, progressCallback);
+                    res.write(`data: ${JSON.stringify({ type: 'complete', results })}\n\n`);
+                    res.end();
+                } catch (error) {
+                    res.write(`data: ${JSON.stringify({ type: 'error', error: error.message })}\n\n`);
+                    res.end();
+                }
+            });
+        } catch (error) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: error.message }));
+        }
+        return;
+    }
+
+    // API: Estimate audio compression
+    if (url === '/api/audio/estimate' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', async () => {
+            try {
+                const { targetPath } = body ? JSON.parse(body) : {};
+                let audioDir = ROOT_DIR;
+
+                if (targetPath) {
+                    audioDir = path.resolve(ROOT_DIR, targetPath);
+
+                    // Security check
+                    if (!fs.existsSync(audioDir)) {
+                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'Directory does not exist' }));
+                        return;
+                    }
+                }
+
+                const estimate = await estimateAudioCompression(audioDir);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(estimate));
+            } catch (error) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: error.message }));
+            }
+        });
+        return;
+    }
+
+    // API: Compress single audio file
+    if (url === '/api/audio/compress/single' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', async () => {
+            try {
+                const { filePath, bitrate, channels, format } = JSON.parse(body);
+                const fullPath = path.resolve(ROOT_DIR, filePath);
+
+                // Security check
+                if (!fullPath.startsWith(ROOT_DIR)) {
+                    res.writeHead(403, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: false, error: 'Invalid path' }));
+                    return;
+                }
+
+                const { compressAudio } = require('./src/audioCompressor');
+                const result = await compressAudio(fullPath, {
+                    bitrate: bitrate || '96k',
+                    channels: channels || null,
+                    format: format || null
+                });
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(result));
+            } catch (error) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: error.message }));
+            }
+        });
+        return;
+    }
+
+    // API: Compress audio
+    if (url === '/api/audio/compress' && req.method === 'POST') {
+        try {
+            let body = '';
+            req.on('data', chunk => { body += chunk; });
+            req.on('end', async () => {
+                const options = body ? JSON.parse(body) : {};
+                const { targetPath, bitrate, sampleRate, channels, format } = options;
+
+                // Determine directory to compress
+                let compressDir = ROOT_DIR;
+                if (targetPath) {
+                    compressDir = path.resolve(ROOT_DIR, targetPath);
+
+                    // Security check
+                    if (!fs.existsSync(compressDir)) {
+                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'Directory does not exist' }));
+                        return;
+                    }
+                }
+
+                // Send headers for Server-Sent Events
+                res.writeHead(200, {
+                    'Content-Type': 'text/event-stream',
+                    'Cache-Control': 'no-cache',
+                    'Connection': 'keep-alive'
+                });
+
+                // Progress callback
+                const progressCallback = (progress) => {
+                    res.write(`data: ${JSON.stringify({ type: 'progress', ...progress })}\n\n`);
+                };
+
+                try {
+                    const results = await compressAudioDirectory(compressDir, {
+                        bitrate: bitrate || '96k',
+                        sampleRate: sampleRate || null,
+                        channels: channels || null,
+                        format: format || null
+                    }, progressCallback);
                     res.write(`data: ${JSON.stringify({ type: 'complete', results })}\n\n`);
                     res.end();
                 } catch (error) {

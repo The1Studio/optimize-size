@@ -21,7 +21,13 @@
       "Bash(npx electron:*)",
       "Bash(npm uninstall:*)",
       "Bash(\".\\node_modules\\electron\\dist\\electron.exe\" .)",
-      "Bash(powershell -ExecutionPolicy Bypass -File \".\\src\\folder-dialog.ps1\" \"C:\\Users\\PC\")"
+      "Bash(powershell -ExecutionPolicy Bypass -File \".\\src\\folder-dialog.ps1\" \"C:\\Users\\PC\")",
+      "Bash(powershell -Command:*)",
+      "Bash(del temp_files.txt)",
+      "Bash(\"c:\\Users\\PC\\Documents\\PlayableAdsProjects\\PlayableAdsTemplate\\CocosPlayableAdsTemplate\\tools\\optimize-size\\public\\styles.css\")",
+      "Bash(\"c:\\Users\\PC\\Documents\\PlayableAdsProjects\\PlayableAdsTemplate\\CocosPlayableAdsTemplate\\tools\\optimize-size\\public\\client.js\")",
+      "Bash(del \"c:\\Users\\PC\\Documents\\PlayableAdsProjects\\PlayableAdsTemplate\\CocosPlayableAdsTemplate\\tools\\optimize-size\\src\\audio-client-functions.js\")",
+      "Bash(tasklist:*)"
     ],
     "deny": [],
     "ask": []

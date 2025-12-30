@@ -108,18 +108,13 @@
                 <div class="tool-card">
                     <div class="tool-header">
                         <span class="tool-icon">🖼️</span>
-                        <h3>Image & Texture Compression</h3>
+                        <h3>Images & Textures</h3>
                     </div>
                     <p class="tool-desc">Optimize PNG/JPG images, reduce file size without quality loss</p>
-                    <div class="optimize-path">
-                        <label>Optimize Directory:</label>
-                        <input type="text" id="optimizePath" class="path-input" placeholder="Leave empty for current root" />
-                        <button class="btn-browse" onclick="browseOptimizePath()">📁 Browse</button>
-                    </div>
                     <div class="tool-actions">
                         <button class="btn-tool" id="btnCompressImages">
                             <span class="btn-icon">⚡</span>
-                            <span>Optimize Images</span>
+                            <span>Compress</span>
                         </button>
                         <div class="tool-stats" id="imageStats">
                             <span class="stat-item">Found: <strong id="totalImages">0</strong> images</span>
@@ -131,6 +126,91 @@
                             <div class="progress-fill" id="progressFill"></div>
                         </div>
                         <span class="progress-text" id="progressText">0%</span>
+                    </div>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <span class="tool-icon">🎵</span>
+                        <h3>Audio Files</h3>
+                    </div>
+                    <p class="tool-desc">Compress audio, convert WAV→MP3, reduce bitrate</p>
+                    <div class="audio-settings">
+                        <div class="setting-group">
+                            <label>Bitrate:</label>
+                            <select id="audioBitrate">
+                                <option value="64k">64 kbps</option>
+                                <option value="96k" selected>96 kbps</option>
+                                <option value="128k">128 kbps</option>
+                            </select>
+                        </div>
+                        <div class="setting-group">
+                            <label>Channels:</label>
+                            <select id="audioChannels">
+                                <option value="">Original</option>
+                                <option value="1">Mono</option>
+                                <option value="2">Stereo</option>
+                            </select>
+                        </div>
+                        <div class="setting-group">
+                            <label>Format:</label>
+                            <select id="audioFormat">
+                                <option value="">Auto</option>
+                                <option value="mp3">MP3</option>
+                                <option value="ogg">OGG</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="tool-actions">
+                        <button class="btn-tool" id="btnCompressAudio">
+                            <span class="btn-icon">⚡</span>
+                            <span>Compress</span>
+                        </button>
+                        <div class="tool-stats" id="audioStats">
+                            <span class="stat-item">Found: <strong id="totalAudio">0</strong> audio</span>
+                            <span class="stat-item">Can save: <strong id="audioSaving">~0 KB</strong></span>
+                        </div>
+                    </div>
+                    <div class="progress-wrapper hidden" id="audioCompressProgress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="audioProgressFill"></div>
+                        </div>
+                        <span class="progress-text" id="audioProgressText">0%</span>
+                    </div>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <span class="tool-icon">🗂️</span>
+                        <h3>Optimize All</h3>
+                    </div>
+                    <p class="tool-desc">Run all enabled optimizations on selected directory</p>
+                    <div class="optimize-path">
+                        <label>Target Directory:</label>
+                        <input type="text" id="optimizePath" class="path-input" placeholder="Leave empty for current root" />
+                        <button class="btn-browse" onclick="browseOptimizePath()">📁 Browse</button>
+                    </div>
+                    <div class="optimize-all-settings">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enableImages" checked>
+                            <span>🖼️ Images</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enableAudio" checked>
+                            <span>🎵 Audio</span>
+                        </label>
+                    </div>
+                    <div class="tool-actions">
+                        <button class="btn-tool btn-primary" id="btnOptimizeAll">
+                            <span class="btn-icon">🚀</span>
+                            <span>Optimize All</span>
+                        </button>
+                    </div>
+                    <div class="progress-wrapper hidden" id="optimizeAllProgress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="optimizeAllProgressFill"></div>
+                        </div>
+                        <span class="progress-text" id="optimizeAllProgressText">0%</span>
                     </div>
                 </div>
             </div>
