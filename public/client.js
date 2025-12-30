@@ -16,6 +16,78 @@ const icons = {
 };
 
 /**
+ * Tag Manager - Manages file tags using file-based storage
+ */
+const TagManager = {
+    _tags: {},
+    _loaded: false,
+
+    // Load tags from server
+    async loadTags() {
+        try {
+            const response = await fetch('/api/tags/get');
+            const result = await response.json();
+            if (result.success) {
+                this._tags = result.tags || {};
+                this._loaded = true;
+            }
+        } catch (e) {
+            console.error('Failed to load tags:', e);
+            this._tags = {};
+            this._loaded = true;
+        }
+    },
+
+    // Save tags to server
+    async saveTags() {
+        try {
+            const response = await fetch('/api/tags/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tags: this._tags })
+            });
+            const result = await response.json();
+            if (!result.success) {
+                console.error('Failed to save tags:', result.error);
+            }
+        } catch (e) {
+            console.error('Failed to save tags:', e);
+        }
+    },
+
+    // Get all tags
+    getTags() {
+        return this._tags;
+    },
+
+    // Get tag for specific file
+    getFileTag(filePath) {
+        return this._tags[filePath] || 'original';
+    },
+
+    // Set tag for specific file
+    async setFileTag(filePath, tag) {
+        this._tags[filePath] = tag;
+        await this.saveTags();
+    },
+
+    // Set multiple tags at once
+    async setFileTags(fileTagMap) {
+        Object.assign(this._tags, fileTagMap);
+        await this.saveTags();
+    }
+};
+
+// Tag definitions
+const TAG_DEFINITIONS = {
+    'original': { label: 'Original', color: '#6c757d', icon: '⚪' },
+    'compressed-low': { label: 'Compressed Low', color: '#28a745', icon: '🟢' },
+    'compressed-medium': { label: 'Compressed Medium', color: '#ffc107', icon: '🟡' },
+    'compressed-hard': { label: 'Compressed Hard', color: '#fd7e14', icon: '🟠' },
+    'compressed-extreme': { label: 'Compressed Extreme', color: '#dc3545', icon: '🔴' }
+};
+
+/**
  * Toggle collapse state of a panel
  * @param {string} panelId - ID of the panel to toggle
  */
@@ -62,6 +134,10 @@ function sizeClass(b) {
 async function load() {
     const res = await fetch('/api/scan');
     DATA = await res.json();
+
+    // Load tags
+    await TagManager.loadTags();
+
     render();
 }
 
@@ -95,11 +171,19 @@ function renderFiles() {
     const search = document.getElementById('searchBox').value.toLowerCase();
     const sort = document.getElementById('sortBy').value;
     const type = document.getElementById('filterType').value;
+    const tagFilter = document.getElementById('filterTag').value;
 
     let f = files.filter(x => {
         if (x.type === 'meta') return false;
         if (search && !x.path.toLowerCase().includes(search)) return false;
         if (type !== 'all' && x.type !== type) return false;
+
+        // Tag filtering
+        if (tagFilter !== 'all') {
+            const fileTag = TagManager.getFileTag(x.path);
+            if (fileTag !== tagFilter) return false;
+        }
+
         return true;
     });
 
@@ -109,11 +193,20 @@ function renderFiles() {
         return a.name.localeCompare(b.name);
     });
 
-    document.getElementById('fileList').innerHTML = f.slice(0, 100).map((x, idx) => `
+    document.getElementById('fileList').innerHTML = f.slice(0, 100).map((x, idx) => {
+        const fileTag = TagManager.getFileTag(x.path);
+        const tagDef = TAG_DEFINITIONS[fileTag] || TAG_DEFINITIONS['original'];
+
+        return `
         <div class="file-item" data-file-path="${x.path}" data-file-type="${x.type}" data-file-idx="${idx}">
             <div class="file-icon ${x.type}">${icons[x.type] || icons.other}</div>
             <div class="file-info">
-                <div class="file-name">${x.name}</div>
+                <div class="file-name">
+                    ${x.name}
+                    <span class="tag-badge" style="background-color: ${tagDef.color};" title="${tagDef.label}">
+                        ${tagDef.icon} ${tagDef.label}
+                    </span>
+                </div>
                 <div class="file-path">${x.path}</div>
             </div>
             <div class="file-size ${sizeClass(x.size)}">${fmt(x.size)}</div>
@@ -128,7 +221,8 @@ function renderFiles() {
                 `}
             </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
 
     // Add click handlers for file items
     document.querySelectorAll('.file-item').forEach(item => {
@@ -303,6 +397,7 @@ function initEventListeners() {
     document.getElementById('searchBox').oninput = renderFiles;
     document.getElementById('sortBy').onchange = renderFiles;
     document.getElementById('filterType').onchange = renderFiles;
+    document.getElementById('filterTag').onchange = renderFiles;
 }
 
 /**
@@ -799,6 +894,14 @@ window.confirmResize = async function() {
             if (result.skipped) {
                 alert(`ℹ️ No resize needed\n\n${result.reason}`);
             } else {
+                // Auto-tag based on size reduction from resize
+                const savedPercent = (result.saved / result.originalSize) * 100;
+                const tag = getCompressionTag(savedPercent);
+                await TagManager.setFileTag(currentResizeFilePath, tag);
+
+                // Re-render to show updated tag
+                renderFiles();
+
                 showResultModal({ ...result, type: 'resize' });
             }
         } else {
@@ -808,6 +911,17 @@ window.confirmResize = async function() {
         alert(`❌ Error: ${error.message}`);
     }
 };
+
+/**
+ * Determine compression tag based on savings percentage
+ */
+function getCompressionTag(savedPercent) {
+    if (savedPercent >= 70) return 'compressed-extreme';
+    if (savedPercent >= 50) return 'compressed-hard';
+    if (savedPercent >= 30) return 'compressed-medium';
+    if (savedPercent >= 10) return 'compressed-low';
+    return 'original';
+}
 
 /**
  * Compress a single image file
@@ -830,6 +944,14 @@ async function compressSingleImage(filePath) {
             if (result.skipped) {
                 alert(`ℹ️ No compression needed\n\n${result.reason}`);
             } else {
+                // Auto-tag based on compression ratio
+                const savedPercent = (result.saved / result.originalSize) * 100;
+                const tag = getCompressionTag(savedPercent);
+                await TagManager.setFileTag(filePath, tag);
+
+                // Re-render to show updated tag
+                renderFiles();
+
                 showResultModal({ ...result, type: 'compress' });
             }
         } else {
@@ -871,8 +993,15 @@ async function compressSingleAudio(filePath) {
             if (result.skipped) {
                 alert(`ℹ️ No compression needed\n\n${result.reason}`);
             } else {
-                // Show result in modal like images
+                // Auto-tag based on compression ratio
                 const percent = ((result.saved / result.originalSize) * 100).toFixed(1);
+                const tag = getCompressionTag(parseFloat(percent));
+                await TagManager.setFileTag(filePath, tag);
+
+                // Re-render to show updated tag
+                renderFiles();
+
+                // Show result in modal like images
                 showSingleAudioResultModal({
                     originalSize: result.originalSize,
                     newSize: result.newSize,

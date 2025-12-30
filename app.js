@@ -14,6 +14,8 @@ const { compressAudioDirectory, estimateAudioCompression } = require('./src/audi
 const PORT = 3456;
 let ROOT_DIR = path.resolve(__dirname, '../../assets');
 const PUBLIC_DIR = path.resolve(__dirname, 'public');
+const OPTIMIZE_DATA_DIR = '.optimize-data';
+const TAGS_FILE = 'tags.json';
 
 // MIME types for static files
 const mimeTypes = {
@@ -243,6 +245,60 @@ const server = http.createServer(async (req, res) => {
 
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ success: true, rootPath: ROOT_DIR }));
+            } catch (error) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: error.message }));
+            }
+        });
+        return;
+    }
+
+    // API: Get tags
+    if (url === '/api/tags/get' && req.method === 'GET') {
+        try {
+            const dataDir = path.join(ROOT_DIR, OPTIMIZE_DATA_DIR);
+            const tagsFilePath = path.join(dataDir, TAGS_FILE);
+
+            // Check if tags file exists
+            if (!fs.existsSync(tagsFilePath)) {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true, tags: {} }));
+                return;
+            }
+
+            // Read tags file
+            const tagsData = fs.readFileSync(tagsFilePath, 'utf8');
+            const tags = JSON.parse(tagsData);
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, tags }));
+        } catch (error) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: error.message }));
+        }
+        return;
+    }
+
+    // API: Save tags
+    if (url === '/api/tags/save' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', async () => {
+            try {
+                const { tags } = JSON.parse(body);
+                const dataDir = path.join(ROOT_DIR, OPTIMIZE_DATA_DIR);
+                const tagsFilePath = path.join(dataDir, TAGS_FILE);
+
+                // Create .optimize-data directory if it doesn't exist
+                if (!fs.existsSync(dataDir)) {
+                    fs.mkdirSync(dataDir, { recursive: true });
+                }
+
+                // Write tags to file
+                fs.writeFileSync(tagsFilePath, JSON.stringify(tags, null, 2), 'utf8');
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true }));
             } catch (error) {
                 res.writeHead(500, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ success: false, error: error.message }));
